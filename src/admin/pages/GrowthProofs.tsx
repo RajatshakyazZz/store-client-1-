@@ -14,12 +14,15 @@ import {
   CheckCircle2,
   ExternalLink,
   Info,
+  Search,
+  X,
 } from 'lucide-react';
 import { portalApi } from '../api/client';
 import { AdminGrowthProofsConfig, AdminGrowthProofItem } from '../api/types';
 import { useToast } from '../context/ToastContext';
 import { useAdminTheme } from '../context/AdminThemeContext';
 import ImageUploadField from '../components/common/ImageUploadField';
+import ProductSearchSelector from '../components/common/ProductSearchSelector';
 
 const DEFAULT_CONFIG: AdminGrowthProofsConfig = {
   enabled: true,
@@ -66,6 +69,7 @@ export default function GrowthProofsPage() {
 
   const [form, setForm] = useState<AdminGrowthProofsConfig>(DEFAULT_CONFIG);
   const [productFilter, setProductFilter] = useState<string>('all');
+  const [screenshotSearch, setScreenshotSearch] = useState<string>('');
 
   useEffect(() => {
     if (remoteConfig) {
@@ -143,16 +147,30 @@ export default function GrowthProofsPage() {
     mutation.mutate(form);
   };
 
-  // Filter items for the admin view list
+  // Filter items for the admin view list by both product and search keywords
   const filteredItemsWithIndices = useMemo(() => {
+    const textQuery = screenshotSearch.toLowerCase().trim();
     return form.items
       .map((item, originalIndex) => ({ item, originalIndex }))
       .filter(({ item }) => {
-        if (productFilter === 'all') return true;
-        if (productFilter === 'global') return !item.productSlug;
-        return item.productSlug === productFilter;
+        // Product dropdown filter
+        if (productFilter === 'global' && item.productSlug) return false;
+        if (productFilter !== 'all' && productFilter !== 'global' && item.productSlug !== productFilter) {
+          return false;
+        }
+        // Live search bar filter (creator handle, product name, slug, metric, tag)
+        if (textQuery) {
+          const matchHandle = (item.title || '').toLowerCase().includes(textQuery);
+          const matchProd = (item.productTitle || '').toLowerCase().includes(textQuery);
+          const matchSlug = (item.productSlug || '').toLowerCase().includes(textQuery);
+          const matchTag = (item.tag || '').toLowerCase().includes(textQuery);
+          const matchFollowers = (item.followers || '').toLowerCase().includes(textQuery);
+          const matchMetric = (item.metric || '').toLowerCase().includes(textQuery);
+          return matchHandle || matchProd || matchSlug || matchTag || matchFollowers || matchMetric;
+        }
+        return true;
       });
-  }, [form.items, productFilter]);
+  }, [form.items, productFilter, screenshotSearch]);
 
   const globalItemsCount = useMemo(() => {
     return form.items.filter((it) => !it.productSlug).length;
@@ -300,38 +318,61 @@ export default function GrowthProofsPage() {
 
       {/* Filter Bar & Header */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
               <span>Proof Screenshots ({form.items.length})</span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Select any product below to filter or manage screenshots for that specific page.
+              Filter, search, or assign screenshots to any product in your store.
             </p>
           </div>
 
-          {/* Product Filter Selector */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" />
-              <span>Filter View:</span>
-            </span>
-            <select
-              value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold focus:outline-none focus:border-purple-500 cursor-pointer"
-            >
-              <option value="all">📁 All Screenshots ({form.items.length})</option>
-              <option value="global">🌐 General / Unassigned ({globalItemsCount})</option>
-              {products.map((p) => {
-                const count = form.items.filter((it) => it.productSlug === p.slug).length;
-                return (
-                  <option key={p.slug} value={p.slug}>
-                    📦 {p.name} {count > 0 ? `(${count})` : ''}
-                  </option>
-                );
-              })}
-            </select>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            {/* Live Search Input Bar */}
+            <div className="relative min-w-[240px] sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-purple-400 pointer-events-none" />
+              <input
+                type="text"
+                value={screenshotSearch}
+                onChange={(e) => setScreenshotSearch(e.target.value)}
+                placeholder="Search by product, handle..."
+                className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30"
+              />
+              {screenshotSearch && (
+                <button
+                  type="button"
+                  onClick={() => setScreenshotSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Product Filter Selector */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-400 font-medium flex items-center gap-1 shrink-0">
+                <Filter className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Filter:</span>
+              </span>
+              <select
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold focus:outline-none focus:border-purple-500 cursor-pointer"
+              >
+                <option value="all">📁 All Screenshots ({form.items.length})</option>
+                <option value="global">🌐 General / Unassigned ({globalItemsCount})</option>
+                {products.map((p) => {
+                  const count = form.items.filter((it) => it.productSlug === p.slug).length;
+                  return (
+                    <option key={p.slug} value={p.slug}>
+                      📦 {p.name} {count > 0 ? `(${count})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -391,56 +432,31 @@ export default function GrowthProofsPage() {
 
                 {/* Details Fields */}
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
-                  {/* DEDICATED PRODUCT SELECTOR BOX */}
+                  {/* DEDICATED PRODUCT SELECTOR BOX WITH SEARCH BAR */}
                   <div className="sm:col-span-2 p-3 sm:p-3.5 rounded-xl bg-slate-800/90 border border-slate-700 space-y-2">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                      <label className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-                        <Package className="w-3.5 h-3.5 text-purple-400" />
-                        <span>Assign to Specific Product Page (Dedicated):</span>
-                      </label>
-                      {item.productSlug ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-black text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
-                          🎯 Shows on: {item.productTitle || item.productSlug}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded-full self-start sm:self-auto">
-                          🌐 General / Main Growth Page
-                        </span>
-                      )}
-                    </div>
-
-                    <select
-                      value={item.productSlug || ''}
-                      onChange={(e) => {
-                        const selectedSlug = e.target.value;
-                        if (!selectedSlug) {
+                    <ProductSearchSelector
+                      products={products}
+                      selectedSlug={item.productSlug}
+                      selectedTitle={item.productTitle}
+                      onSelect={(selectedProduct) => {
+                        if (!selectedProduct) {
                           handleUpdateItem(originalIndex, {
                             productSlug: '',
                             productId: '',
                             productTitle: '',
                           });
                         } else {
-                          const prod = products.find((p) => p.slug === selectedSlug);
                           handleUpdateItem(originalIndex, {
-                            productSlug: prod?.slug || selectedSlug,
-                            productId: prod?.id || '',
-                            productTitle: prod?.name || selectedSlug,
+                            productSlug: selectedProduct.slug,
+                            productId: selectedProduct.id,
+                            productTitle: selectedProduct.name,
                           });
                         }
                       }}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs sm:text-sm font-semibold focus:outline-none focus:border-purple-500 cursor-pointer"
-                    >
-                      <option value="">🌐 All / General (Shows on Main Growth Proofs page from Menu)</option>
-                      <optgroup label="── Store Bundles & Products ──">
-                        {products.map((p) => (
-                          <option key={p.slug} value={p.slug}>
-                            📦 {p.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    </select>
+                      isLight={isLight}
+                    />
 
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                    <p className="text-[11px] text-slate-400 leading-relaxed pt-1 border-t border-slate-700/60">
                       {item.productSlug ? (
                         <span className="text-emerald-400 font-medium">
                           ✓ Ye screenshot sirf <strong>"{item.productTitle || item.productSlug}"</strong> ke product page per aur menu ke Growth Proofs page per dikhega.
