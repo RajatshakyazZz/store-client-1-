@@ -202,7 +202,7 @@ export async function sendTelegramMessage(
       : AUTHORIZED_TELEGRAM_ADMINS;
 
   const targets = targetChatId ? [String(targetChatId).trim()] : authorizedList;
-  const validTargets = targets.filter(Boolean);
+  const validTargets = Array.from(new Set(targets.map((s) => String(s || '').trim()).filter(Boolean)));
   if (validTargets.length === 0) {
     console.warn('[Telegram Alert] No valid target chat IDs found.');
     return false;
@@ -239,34 +239,49 @@ export async function sendTelegramMessage(
           const errText = await res.text();
           console.warn(`Telegram API error for chat ${chatId}:`, errText);
 
-          // Resilient Fallback: If Telegram rejected due to HTML entities or formatting, retry as clean text
-          if (
-            errText.includes("can't parse entities") ||
-            errText.includes('parse') ||
-            errText.includes('entity') ||
-            errText.includes('entities')
-          ) {
-            try {
-              const plainText = htmlText
-                .replace(/<br\s*\/?>/gi, '\n')
-                .replace(/<\/p>/gi, '\n\n')
-                .replace(/<[^>]+>/g, '');
-              const retryPayload: Record<string, any> = {
+          // If chat not found, the user has not started the bot
+          if (errText.includes('chat not found')) {
+            console.warn(`[Telegram Alert] Chat ${chatId} not found. The user must click /start on the bot in Telegram first.`);
+            return false;
+          }
+
+          // Resilient Fallback 1: Plain text with buttons
+          const plainText = htmlText
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n\n')
+            .replace(/<[^>]+>/g, '');
+
+          try {
+            const retryPayload: Record<string, any> = {
+              chat_id: chatId,
+              text: plainText,
+              disable_web_page_preview: true,
+            };
+            if (payload.reply_markup) {
+              retryPayload.reply_markup = payload.reply_markup;
+            }
+            const retryRes = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(retryPayload),
+            });
+            if (retryRes.ok) return true;
+          } catch {}
+
+          // Resilient Fallback 2: Plain text WITHOUT buttons (in case inline keyboard button URL was rejected)
+          try {
+            const fallbackNoButtons = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
                 chat_id: chatId,
                 text: plainText,
                 disable_web_page_preview: true,
-              };
-              if (payload.reply_markup) {
-                retryPayload.reply_markup = payload.reply_markup;
-              }
-              const retryRes = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(retryPayload),
-              });
-              if (retryRes.ok) return true;
-            } catch {}
-          }
+              }),
+            });
+            if (fallbackNoButtons.ok) return true;
+          } catch {}
+
           return false;
         }
       } catch (err) {

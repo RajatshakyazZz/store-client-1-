@@ -285,25 +285,27 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Dispatch Instant Telegram Alert for Checkout Started
-    sendAbandonedOrPendingTelegramAlert(
-      {
-        orderNumber,
-        customer: {
-          fullName: cleanName || 'Customer',
-          email: cleanEmail,
-          phone: cleanPhone || '',
+    // 3. Dispatch Instant Telegram Alert for Checkout Started (Awaited to ensure delivery in serverless environment)
+    try {
+      await sendAbandonedOrPendingTelegramAlert(
+        {
+          orderNumber,
+          customer: {
+            fullName: cleanName || 'Customer',
+            email: cleanEmail,
+            phone: cleanPhone || '',
+          },
+          items: items || [],
+          orderBump: orderBump || null,
+          totalAmount: Number(finalTotalAmount),
+          paymentStatus: 'CHECKOUT_STARTED',
+          paymentMethod: 'PayU India (UPI / Card / NetBanking)',
         },
-        items: items || [],
-        orderBump: orderBump || null,
-        totalAmount: Number(finalTotalAmount),
-        paymentStatus: 'CHECKOUT_STARTED',
-        paymentMethod: 'PayU India (UPI / Card / NetBanking)',
-      },
-      'checkout_initiated'
-    ).catch((tErr) => {
-      console.warn('Non-blocking Telegram alert warning:', tErr);
-    });
+        'checkout_initiated'
+      );
+    } catch (tErr) {
+      console.warn('[PayU Create Order] Non-blocking Telegram alert warning:', tErr);
+    }
 
     return NextResponse.json({
       success: true,

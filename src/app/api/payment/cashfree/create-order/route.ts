@@ -292,25 +292,27 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Dispatch Instant Telegram Alert for Checkout Started (Non-blocking background delivery)
-    sendAbandonedOrPendingTelegramAlert(
-      {
-        orderNumber,
-        customer: {
-          fullName: cleanName || 'Customer',
-          email: cleanEmail,
-          phone: cleanPhone || '',
+    // 3. Dispatch Instant Telegram Alert for Checkout Started (Awaited to ensure delivery in serverless environment)
+    try {
+      await sendAbandonedOrPendingTelegramAlert(
+        {
+          orderNumber,
+          customer: {
+            fullName: cleanName || 'Customer',
+            email: cleanEmail,
+            phone: cleanPhone || '',
+          },
+          items: items || [],
+          orderBump: orderBump || null,
+          totalAmount: Number(totalAmount),
+          paymentStatus: 'CHECKOUT_STARTED',
+          paymentMethod: 'Cashfree UPI / Card',
         },
-        items: items || [],
-        orderBump: orderBump || null,
-        totalAmount: Number(totalAmount),
-        paymentStatus: 'CHECKOUT_STARTED',
-        paymentMethod: 'Cashfree UPI / Card',
-      },
-      'checkout_initiated'
-    ).catch((tErr) => {
-      console.warn('Non-blocking Telegram alert warning:', tErr);
-    });
+        'checkout_initiated'
+      );
+    } catch (tErr) {
+      console.warn('[Cashfree Create Order] Non-blocking Telegram alert warning:', tErr);
+    }
 
     return NextResponse.json({
       success: true,

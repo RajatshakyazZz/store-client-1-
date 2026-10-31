@@ -732,6 +732,10 @@ export default function SettingsIntegrations() {
                 <p className="text-[10px] text-slate-500 mt-1">
                   All users with these Telegram Chat IDs will receive real-time order and catalog notifications.
                 </p>
+                <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300/90 flex items-start gap-2">
+                  <span className="text-amber-400 font-bold">⚠️ NOTE:</span>
+                  <span>Har admin user ko apne Telegram par bot ko open karke <strong>/start</strong> dabana zaroori hai, tabhi Telegram bot unhe message send kar paayega.</span>
+                </div>
 
                 {/* Chips for parsed chat IDs */}
                 {tgForm.admin_chat_ids && (
