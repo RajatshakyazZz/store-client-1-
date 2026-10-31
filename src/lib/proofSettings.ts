@@ -1,6 +1,3 @@
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-
 export interface GrowthProofItem {
   id: string;
   image: string;
@@ -80,32 +77,6 @@ export async function fetchGrowthProofs(force = false): Promise<GrowthProofsConf
       }
     } catch (e) {
       console.warn('Failed to fetch /api/settings/growth-proofs:', e);
-    }
-  }
-
-  // 2. Direct Firestore fallback
-  if (db) {
-    try {
-      const snap = await getDoc(doc(db, 'store_settings', 'growth_proofs')).catch(() => null);
-      if (snap && snap.exists()) {
-        const data = snap.data() as GrowthProofsConfig;
-        cachedGrowth = { ...DEFAULT_GROWTH_PROOFS, ...data };
-        lastGrowthFetch = now;
-        return cachedGrowth;
-      }
-
-      const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
-      if (genSnap && genSnap.exists()) {
-        const gData = genSnap.data();
-        if (gData.growth_proofs && typeof gData.growth_proofs === 'object') {
-          const loaded: GrowthProofsConfig = { ...DEFAULT_GROWTH_PROOFS, ...gData.growth_proofs };
-          cachedGrowth = loaded;
-          lastGrowthFetch = now;
-          return loaded;
-        }
-      }
-    } catch (e) {
-      console.warn('Direct Firestore read error for growth_proofs:', e);
     }
   }
 

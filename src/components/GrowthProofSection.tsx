@@ -40,6 +40,7 @@ export default function GrowthProofSection({
   badgeOverride,
   subheadlineOverride,
 }: GrowthProofSectionProps) {
+  const [mounted, setMounted] = useState(false);
   const [config, setConfig] = useState<GrowthProofsConfig>(initialConfig || getGrowthProofsSync());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -50,6 +51,11 @@ export default function GrowthProofSection({
   const startXRef = useRef(0);
   const currentXRef = useRef(0);
   const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Set mounted on client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch updated config on mount & listen to live updates from admin
   useEffect(() => {
@@ -156,8 +162,8 @@ export default function GrowthProofSection({
     setTimeout(() => setIsPaused(false), 2000);
   };
 
-  // If section is disabled OR 0 screenshots exist for this scope, return null!
-  if (!config.enabled || total === 0) {
+  // If not mounted or section is disabled OR 0 screenshots exist for this scope, return null!
+  if (!mounted || !config.enabled || total === 0) {
     return null;
   }
 
