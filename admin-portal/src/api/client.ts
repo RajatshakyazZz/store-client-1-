@@ -387,15 +387,28 @@ class PortalApiClient {
 
       if (db) {
         try {
-          const snap = await getDoc(doc(db, 'store_settings', 'telegram'));
-          if (snap.exists()) {
-            const data = snap.data();
-            botToken = String(data.bot_token || '').trim();
-            targetChatIds = String(data.admin_chat_ids || '')
-              .split(',')
-              .map((s: string) => s.trim())
-              .filter(Boolean);
-          }
+          const [genSnap, telSnap] = await Promise.all([
+            getDoc(doc(db, 'store_settings', 'general')).catch(() => null),
+            getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null),
+          ]);
+          const genTelegram =
+            genSnap && genSnap.exists() && genSnap.data().telegram && typeof genSnap.data().telegram === 'object'
+              ? genSnap.data().telegram
+              : null;
+          const telData = telSnap && telSnap.exists() ? telSnap.data() : null;
+
+          const data =
+            (genTelegram && (genTelegram.bot_token || genTelegram.admin_chat_ids))
+              ? genTelegram
+              : (telData && (telData.bot_token || telData.admin_chat_ids))
+              ? telData
+              : (genTelegram || telData || {});
+
+          botToken = String(data.bot_token || '').trim();
+          targetChatIds = String(data.admin_chat_ids || '')
+            .split(',')
+            .map((s: string) => s.trim())
+            .filter(Boolean);
         } catch {}
       }
 

@@ -85,9 +85,24 @@ export async function fetchDynamicTelegramConfig(force = false): Promise<ServerT
 
   if (db) {
     try {
-      const snap = await getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null);
-      if (snap && snap.exists()) {
-        const data = snap.data();
+      const [genSnap, telSnap] = await Promise.all([
+        getDoc(doc(db, 'store_settings', 'general')).catch(() => null),
+        getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null),
+      ]);
+
+      const gData = genSnap && genSnap.exists() ? genSnap.data() : null;
+      const genTelegram = gData && gData.telegram && typeof gData.telegram === 'object' ? gData.telegram : null;
+      const telData = telSnap && telSnap.exists() ? telSnap.data() : null;
+
+      // Pick source with active credentials, prioritizing store_settings/general
+      const data =
+        (genTelegram && (genTelegram.bot_token || genTelegram.admin_chat_ids))
+          ? genTelegram
+          : (telData && (telData.bot_token || telData.admin_chat_ids))
+          ? telData
+          : (genTelegram || telData || null);
+
+      if (data) {
         const customAdmins = parseConfigChatIds(data.admin_chat_ids);
 
         // Strictly prioritize custom admins set in Admin Panel
@@ -103,30 +118,9 @@ export async function fetchDynamicTelegramConfig(force = false): Promise<ServerT
           leadAlert: parseConfigBool(data.lead_alert, true),
           resellerAlert: parseConfigBool(data.reseller_alert, true),
         };
-      } else {
-        const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
-        if (genSnap && genSnap.exists()) {
-          const gData = genSnap.data();
-          if (gData.telegram && typeof gData.telegram === 'object') {
-            const t = gData.telegram;
-            const customAdmins = parseConfigChatIds(t.admin_chat_ids);
-            const effectiveAdmins = customAdmins.length > 0 ? customAdmins : envAdmins;
-
-            resolvedConfig = {
-              enabled: parseConfigBool(t.enabled, true),
-              botToken: String(t.bot_token || '').trim() || resolvedConfig.botToken,
-              adminChatIds: effectiveAdmins,
-              newOrderAlert: parseConfigBool(t.new_order_alert, true),
-              productAlert: parseConfigBool(t.product_alert, true),
-              dailySummaryAlert: parseConfigBool(t.daily_summary_alert, true),
-              leadAlert: parseConfigBool(t.lead_alert, true),
-              resellerAlert: parseConfigBool(t.reseller_alert, true),
-            };
-          }
-        }
       }
     } catch (err) {
-      console.warn('Error reading store_settings/telegram in fetchDynamicTelegramConfig:', err);
+      console.warn('Error reading store_settings telegram config in fetchDynamicTelegramConfig:', err);
     }
   }
 

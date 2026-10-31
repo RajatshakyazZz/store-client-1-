@@ -41,42 +41,40 @@ export async function GET() {
 
     if (db) {
       try {
-        const snap = await getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null);
-        if (snap && snap.exists()) {
-          const data = snap.data();
-          config = {
-            enabled: typeof data.enabled === 'boolean' ? data.enabled : String(data.enabled || '').toLowerCase() !== 'false',
-            bot_token: String(data.bot_token || '').trim() || DEFAULT_CONFIG.bot_token,
-            admin_chat_ids: String(data.admin_chat_ids || '').trim() || DEFAULT_CONFIG.admin_chat_ids,
-            new_order_alert: typeof data.new_order_alert === 'boolean' ? data.new_order_alert : String(data.new_order_alert || '').toLowerCase() !== 'false',
-            product_alert: typeof data.product_alert === 'boolean' ? data.product_alert : String(data.product_alert || '').toLowerCase() !== 'false',
-            daily_summary_alert: typeof data.daily_summary_alert === 'boolean' ? data.daily_summary_alert : String(data.daily_summary_alert || '').toLowerCase() !== 'false',
-            last_test_status: data.last_test_status,
-            last_test_at: data.last_test_at,
-          };
-          return NextResponse.json({ success: true, config }, { headers: CORS_HEADERS });
-        }
+        const [genSnap, telSnap] = await Promise.all([
+          getDoc(doc(db, 'store_settings', 'general')).catch(() => null),
+          getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null),
+        ]);
 
-        const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
-        if (genSnap && genSnap.exists()) {
-          const gData = genSnap.data();
-          if (gData.telegram && typeof gData.telegram === 'object') {
-            const t = gData.telegram;
-            config = {
-              enabled: typeof t.enabled === 'boolean' ? t.enabled : true,
-              bot_token: String(t.bot_token || '').trim() || DEFAULT_CONFIG.bot_token,
-              admin_chat_ids: String(t.admin_chat_ids || '').trim() || DEFAULT_CONFIG.admin_chat_ids,
-              new_order_alert: typeof t.new_order_alert === 'boolean' ? t.new_order_alert : true,
-              product_alert: typeof t.product_alert === 'boolean' ? t.product_alert : true,
-              daily_summary_alert: typeof t.daily_summary_alert === 'boolean' ? t.daily_summary_alert : true,
-              last_test_status: t.last_test_status,
-              last_test_at: t.last_test_at,
-            };
-            return NextResponse.json({ success: true, config }, { headers: CORS_HEADERS });
-          }
-        }
+        const genTelegram =
+          genSnap && genSnap.exists() && genSnap.data().telegram && typeof genSnap.data().telegram === 'object'
+            ? genSnap.data().telegram
+            : null;
+        const telDoc = telSnap && telSnap.exists() ? telSnap.data() : null;
+
+        // Choose the one that has valid credentials, prioritizing general or whichever has values
+        const sourceData =
+          (genTelegram && (genTelegram.bot_token || genTelegram.admin_chat_ids))
+            ? genTelegram
+            : (telDoc && (telDoc.bot_token || telDoc.admin_chat_ids))
+            ? telDoc
+            : (genTelegram || telDoc || {});
+
+        config = {
+          enabled: typeof sourceData.enabled === 'boolean' ? sourceData.enabled : true,
+          bot_token: String(sourceData.bot_token || '').trim() || DEFAULT_CONFIG.bot_token,
+          admin_chat_ids: String(sourceData.admin_chat_ids || '').trim() || DEFAULT_CONFIG.admin_chat_ids,
+          new_order_alert: typeof sourceData.new_order_alert === 'boolean' ? sourceData.new_order_alert : true,
+          product_alert: typeof sourceData.product_alert === 'boolean' ? sourceData.product_alert : true,
+          daily_summary_alert: typeof sourceData.daily_summary_alert === 'boolean' ? sourceData.daily_summary_alert : true,
+          last_test_status: sourceData.last_test_status,
+          last_test_at: sourceData.last_test_at,
+          updated_at: sourceData.updated_at,
+        };
+
+        return NextResponse.json({ success: true, config }, { headers: CORS_HEADERS });
       } catch (err) {
-        console.warn('Error reading store_settings/telegram in admin API:', err);
+        console.warn('Error reading store_settings telegram config in admin API:', err);
       }
     }
 
@@ -112,17 +110,34 @@ export async function POST(request: Request) {
     if (body.last_test_at) payload.last_test_at = body.last_test_at;
 
     if (db) {
+      let savedToFirestore = false;
+      let lastError: any = null;
+
+      // 1. Primary write to store_settings/general (telegram field)
+      // This is 100% permitted by Firestore rules and synced across all storefront & admin processes
       try {
-        await setDoc(doc(db, 'store_settings', 'telegram'), payload, { merge: true });
         await setDoc(
           doc(db, 'store_settings', 'general'),
           { telegram: payload },
           { merge: true }
         );
+        savedToFirestore = true;
       } catch (err: any) {
-        console.error('Error saving telegram config to Firestore:', err);
+        console.error('Error saving telegram config to store_settings/general:', err);
+        lastError = err;
+      }
+
+      // 2. Best-effort mirror write to store_settings/telegram
+      try {
+        await setDoc(doc(db, 'store_settings', 'telegram'), payload, { merge: true });
+        savedToFirestore = true;
+      } catch (err: any) {
+        console.warn('Optional store_settings/telegram mirror write skipped (rules restricted):', err?.message);
+      }
+
+      if (!savedToFirestore && lastError) {
         return NextResponse.json(
-          { success: false, error: `Firestore write error: ${err.message}` },
+          { success: false, error: `Firestore write error: ${lastError.message}` },
           { status: 500, headers: CORS_HEADERS }
         );
       }

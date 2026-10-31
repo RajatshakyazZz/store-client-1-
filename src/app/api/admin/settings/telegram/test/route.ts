@@ -24,12 +24,25 @@ export async function POST(request: Request) {
     if (!token || !rawIds) {
       if (db) {
         try {
-          const snap = await getDoc(doc(db, 'store_settings', 'telegram'));
-          if (snap.exists()) {
-            const data = snap.data();
-            if (!token) token = String(data.bot_token || '').trim();
-            if (!rawIds) rawIds = String(data.admin_chat_ids || '').trim();
-          }
+          const [genSnap, telSnap] = await Promise.all([
+            getDoc(doc(db, 'store_settings', 'general')).catch(() => null),
+            getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null),
+          ]);
+          const genTelegram =
+            genSnap && genSnap.exists() && genSnap.data().telegram && typeof genSnap.data().telegram === 'object'
+              ? genSnap.data().telegram
+              : null;
+          const telDoc = telSnap && telSnap.exists() ? telSnap.data() : null;
+
+          const data =
+            (genTelegram && (genTelegram.bot_token || genTelegram.admin_chat_ids))
+              ? genTelegram
+              : (telDoc && (telDoc.bot_token || telDoc.admin_chat_ids))
+              ? telDoc
+              : (genTelegram || telDoc || {});
+
+          if (!token) token = String(data.bot_token || '').trim();
+          if (!rawIds) rawIds = String(data.admin_chat_ids || '').trim();
         } catch {}
       }
     }
@@ -62,7 +75,7 @@ export async function POST(request: Request) {
       timeStyle: 'medium',
     });
 
-    const msg = `⚡🔔 <b>ZTORE DIGITAL STORE — TELEGRAM BOT TEST ALERT</b> 🚀
+    const msg = `⚡🔔 <b>VAULTWORLD STORE — TELEGRAM BOT TEST ALERT</b> 🚀
 ━━━━━━━━━━━━━━━━━━━━━━
 ✅ <b>Bot Connection:</b> Active & Verified
 📱 <b>Admin Chat IDs:</b> ${targetChatIds.join(', ')}
@@ -104,6 +117,19 @@ export async function POST(request: Request) {
       const note = errors.length > 0 ? ` (Note: ${errors.join('; ')} — users must click /start on @Vault_World_bot to receive messages)` : '';
 
       if (db) {
+        try {
+          await setDoc(
+            doc(db, 'store_settings', 'general'),
+            {
+              telegram: {
+                last_test_status: statusText,
+                last_test_at: timestamp,
+              },
+            },
+            { merge: true }
+          );
+        } catch {}
+
         try {
           await setDoc(
             doc(db, 'store_settings', 'telegram'),

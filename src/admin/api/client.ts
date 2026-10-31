@@ -2753,9 +2753,25 @@ class PortalApiClient {
     // 2. Direct Firestore read
     if (db) {
       try {
-        const snap = await getDoc(doc(db, 'store_settings', 'telegram'));
-        if (snap.exists()) {
-          const data = snap.data() as TelegramConfig;
+        const [genSnap, telSnap] = await Promise.all([
+          getDoc(doc(db, 'store_settings', 'general')).catch(() => null),
+          getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null),
+        ]);
+
+        const genTelegram =
+          genSnap && genSnap.exists() && genSnap.data().telegram && typeof genSnap.data().telegram === 'object'
+            ? (genSnap.data().telegram as TelegramConfig)
+            : null;
+        const telDoc = telSnap && telSnap.exists() ? (telSnap.data() as TelegramConfig) : null;
+
+        const data =
+          (genTelegram && (genTelegram.bot_token || genTelegram.admin_chat_ids))
+            ? genTelegram
+            : (telDoc && (telDoc.bot_token || telDoc.admin_chat_ids))
+            ? telDoc
+            : (genTelegram || telDoc || null);
+
+        if (data) {
           const merged: TelegramConfig = {
             ...initialTelegram,
             ...data,
@@ -2804,16 +2820,24 @@ class PortalApiClient {
 
     // 2. Direct Firestore write
     if (db) {
+      const sanitized = sanitizePayload(clean);
+
+      // Primary: store_settings/general (telegram) - permitted by Firestore rules across all devices
       try {
-        const sanitized = sanitizePayload(clean);
-        await setDoc(doc(db, 'store_settings', 'telegram'), sanitized, { merge: true });
         await setDoc(
           doc(db, 'store_settings', 'general'),
           { telegram: sanitized },
           { merge: true }
         );
       } catch (e) {
-        console.warn('Firestore updateTelegram error:', e);
+        console.warn('Firestore updateTelegram general doc warning:', e);
+      }
+
+      // Best-effort secondary mirror: store_settings/telegram
+      try {
+        await setDoc(doc(db, 'store_settings', 'telegram'), sanitized, { merge: true });
+      } catch (e) {
+        // Expected if rules restrict separate telegram doc
       }
     }
 

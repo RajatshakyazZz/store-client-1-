@@ -30,42 +30,39 @@ export async function GET() {
 
     if (db) {
       try {
-        const snap = await getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null);
-        if (snap && snap.exists()) {
-          const data = snap.data();
-          config = {
-            enabled: typeof data.enabled === 'boolean' ? data.enabled : String(data.enabled || '').toLowerCase() !== 'false',
-            bot_token: String(data.bot_token || '').trim() || DEFAULT_CONFIG.bot_token,
-            admin_chat_ids: String(data.admin_chat_ids || '').trim() || DEFAULT_CONFIG.admin_chat_ids,
-            new_order_alert: typeof data.new_order_alert === 'boolean' ? data.new_order_alert : String(data.new_order_alert || '').toLowerCase() !== 'false',
-            product_alert: typeof data.product_alert === 'boolean' ? data.product_alert : String(data.product_alert || '').toLowerCase() !== 'false',
-            daily_summary_alert: typeof data.daily_summary_alert === 'boolean' ? data.daily_summary_alert : String(data.daily_summary_alert || '').toLowerCase() !== 'false',
-            last_test_status: data.last_test_status,
-            last_test_at: data.last_test_at,
-          };
-          return NextResponse.json({ success: true, config });
-        }
+        const [genSnap, telSnap] = await Promise.all([
+          getDoc(doc(db, 'store_settings', 'general')).catch(() => null),
+          getDoc(doc(db, 'store_settings', 'telegram')).catch(() => null),
+        ]);
 
-        const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
-        if (genSnap && genSnap.exists()) {
-          const gData = genSnap.data();
-          if (gData.telegram && typeof gData.telegram === 'object') {
-            const t = gData.telegram;
-            config = {
-              enabled: typeof t.enabled === 'boolean' ? t.enabled : true,
-              bot_token: String(t.bot_token || '').trim() || DEFAULT_CONFIG.bot_token,
-              admin_chat_ids: String(t.admin_chat_ids || '').trim() || DEFAULT_CONFIG.admin_chat_ids,
-              new_order_alert: typeof t.new_order_alert === 'boolean' ? t.new_order_alert : true,
-              product_alert: typeof t.product_alert === 'boolean' ? t.product_alert : true,
-              daily_summary_alert: typeof t.daily_summary_alert === 'boolean' ? t.daily_summary_alert : true,
-              last_test_status: t.last_test_status,
-              last_test_at: t.last_test_at,
-            };
-            return NextResponse.json({ success: true, config });
-          }
-        }
+        const genTelegram =
+          genSnap && genSnap.exists() && genSnap.data().telegram && typeof genSnap.data().telegram === 'object'
+            ? genSnap.data().telegram
+            : null;
+        const telDoc = telSnap && telSnap.exists() ? telSnap.data() : null;
+
+        // Choose the one that has valid credentials, prioritizing general or whichever has values
+        const sourceData =
+          (genTelegram && (genTelegram.bot_token || genTelegram.admin_chat_ids))
+            ? genTelegram
+            : (telDoc && (telDoc.bot_token || telDoc.admin_chat_ids))
+            ? telDoc
+            : (genTelegram || telDoc || {});
+
+        config = {
+          enabled: typeof sourceData.enabled === 'boolean' ? sourceData.enabled : true,
+          bot_token: String(sourceData.bot_token || '').trim() || DEFAULT_CONFIG.bot_token,
+          admin_chat_ids: String(sourceData.admin_chat_ids || '').trim() || DEFAULT_CONFIG.admin_chat_ids,
+          new_order_alert: typeof sourceData.new_order_alert === 'boolean' ? sourceData.new_order_alert : true,
+          product_alert: typeof sourceData.product_alert === 'boolean' ? sourceData.product_alert : true,
+          daily_summary_alert: typeof sourceData.daily_summary_alert === 'boolean' ? sourceData.daily_summary_alert : true,
+          last_test_status: sourceData.last_test_status,
+          last_test_at: sourceData.last_test_at,
+        };
+
+        return NextResponse.json({ success: true, config });
       } catch (err) {
-        console.warn('Error reading store_settings/telegram in public settings API:', err);
+        console.warn('Error reading store_settings telegram config in public settings API:', err);
       }
     }
 
