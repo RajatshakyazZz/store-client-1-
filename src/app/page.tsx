@@ -1,3 +1,6 @@
+'use client';
+
+import React from 'react';
 import Hero from '@/components/Hero';
 import FreeBundleOfferBanner from '@/components/FreeBundleOfferBanner';
 import TrendingMarquee from '@/components/TrendingMarquee';
