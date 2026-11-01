@@ -21,6 +21,7 @@ import {
   fetchCustomProducts,
   getAllCatalogBundles,
   getLocalCustomProductsSync,
+  mapFirestoreDocToBundleProduct,
 } from '@/lib/customProducts';
 import {
   HomepagePinnedConfig,
@@ -74,7 +75,7 @@ export default function ViralBundlesModal() {
     };
   }, []);
 
-  // Compute the list of pinned viral bundles in exact order (with prefix & case immunity)
+  // Compute the list of pinned viral bundles in exact order (with prefix, title, keyword & image resolution)
   const pinnedBundles = useMemo(() => {
     try {
       if (!isMounted || !config || !config.enabled || !Array.isArray(config.pinnedSlugs) || config.pinnedSlugs.length === 0) {
@@ -82,8 +83,9 @@ export default function ViralBundlesModal() {
       }
 
       const map = new Map<string, BundleProduct>();
-      for (const b of (allBundles || [])) {
-        if (!b) continue;
+
+      const registerBundle = (b: BundleProduct) => {
+        if (!b) return;
         if (b.slug) {
           const s = String(b.slug).toLowerCase().trim();
           map.set(s, b);
@@ -96,20 +98,88 @@ export default function ViralBundlesModal() {
           map.set(id.replace(/^rb-/, ''), b);
           map.set(`rb-${id}`, b);
         }
+        if (b.title) {
+          const t = String(b.title).toLowerCase().trim();
+          map.set(t, b);
+          const tSlug = t.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+          map.set(tSlug, b);
+          map.set(tSlug.replace(/^rb-/, ''), b);
+          map.set(`rb-${tSlug}`, b);
+        }
+      };
+
+      for (const b of (allBundles || [])) {
+        registerBundle(b);
+      }
+      for (const b of BUNDLE_PRODUCTS) {
+        if (!map.has(b.slug.toLowerCase())) {
+          registerBundle(b);
+        }
+      }
+
+      // Check localStorage for custom products created in admin
+      if (typeof window !== 'undefined') {
+        try {
+          const rawLocal = localStorage.getItem('vaultzet_custom_products');
+          if (rawLocal) {
+            const parsed = JSON.parse(rawLocal);
+            if (Array.isArray(parsed)) {
+              for (const p of parsed) {
+                if (!p) continue;
+                const mapped = mapFirestoreDocToBundleProduct(p);
+                registerBundle(mapped);
+                const rawSlug = String(p.slug || p.id || '').toLowerCase().trim();
+                const rawName = String(p.name || '').toLowerCase().trim();
+                const rawNameSlug = rawName.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                if (rawSlug) map.set(rawSlug, mapped);
+                if (rawName) map.set(rawName, mapped);
+                if (rawNameSlug) map.set(rawNameSlug, mapped);
+              }
+            }
+          }
+        } catch {}
       }
 
       return config.pinnedSlugs
         .map((slug) => {
           const clean = String(slug || '').toLowerCase().trim();
           if (!clean) return null;
-          const found =
+          let found =
             map.get(clean) ||
             map.get(clean.replace(/^rb-/, '')) ||
             map.get(`rb-${clean}`);
 
-          if (found) return found;
+          // Extract keyword words e.g. "snake" from "2500-ai-snake2"
+          const words = clean
+            .split(/[-_\s]+/)
+            .filter((w) => w.length >= 3 && !['bundle', 'reels', 'pack', 'prod', 'video', 'videos'].includes(w));
 
-          // Fallback bundle object so pinned items never disappear while custom products load
+          const keywordMatch = (allBundles || []).concat(BUNDLE_PRODUCTS).find((b) => {
+            const text = `${b.slug} ${b.title} ${b.id}`.toLowerCase();
+            return words.some((w) => text.includes(w));
+          });
+
+          if (!found && keywordMatch) {
+            found = keywordMatch;
+          }
+
+          const fallbackThumbnail =
+            keywordMatch?.thumbnail ||
+            'https://reelsbundles.in/wp-content/uploads/2026/10/500-snake-ulti-duniya-reverse-world-ai-reels-bundle-2-768x576.png';
+
+          if (found) {
+            // Guarantee thumbnail is a real bundle image
+            const thumb =
+              found.thumbnail && !found.thumbnail.includes('photo-1618005182384-a83a8bd57fbe')
+                ? found.thumbnail
+                : fallbackThumbnail;
+            return {
+              ...found,
+              thumbnail: thumb,
+            };
+          }
+
+          // Fallback bundle object with clean formatting & realistic cover photo
           const fallbackTitle = clean
             .replace(/^rb-/, '')
             .replace(/-/g, ' ')
@@ -127,7 +197,7 @@ export default function ViralBundlesModal() {
             personalOriginalPrice: 499,
             resellerPrice: 199,
             resellerOriginalPrice: 998,
-            thumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400',
+            thumbnail: fallbackThumbnail,
             galleryImages: [],
             previewVideoUrl: '',
             previewVideoUrls: [],
@@ -140,25 +210,13 @@ export default function ViralBundlesModal() {
     }
   }, [isMounted, config, allBundles]);
 
-  // Auto-open logic (balanced delay on visit)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (pinnedBundles.length === 0) return;
-    if (config.autoPopup === false) return;
-
-    try {
-      const alreadySeen = sessionStorage.getItem('vaultzet_viral_popup_seen');
-      if (!alreadySeen) {
-        const timer = setTimeout(() => {
-          setIsOpen(true);
-        }, 1500);
-        return () => clearTimeout(timer);
-      }
-    } catch {}
-  }, [pinnedBundles.length, config.autoPopup]);
-
+  // NEVER auto-open popup on page load; strictly open only when user clicks floating pill or button
   const handleClose = () => {
     setIsOpen(false);
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
     try {
       sessionStorage.setItem('vaultzet_viral_popup_seen', 'true');
     } catch {}
@@ -175,15 +233,18 @@ export default function ViralBundlesModal() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Lock body scroll when modal is open
+  // Lock body scroll ONLY while user has modal open, restore immediately on close
   useEffect(() => {
+    if (typeof document === 'undefined') return;
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     };
   }, [isOpen]);
 
@@ -318,6 +379,12 @@ export default function ViralBundlesModal() {
                         src={optimizeImageUrl(bundle.thumbnail, 160, 80)}
                         alt={bundle.title}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.includes('reelsbundles.in')) {
+                            target.src = 'https://reelsbundles.in/wp-content/uploads/2026/10/500-dr-skeleton-health-reels-bundle-1-2-768x576.png';
+                          }
+                        }}
                       />
                       <div className="absolute top-1 left-1 px-1 py-0.2 rounded bg-black/85 text-amber-300 text-[8px] font-black border border-amber-400/40">
                         #{index + 1}

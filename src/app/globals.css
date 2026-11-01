@@ -31,7 +31,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
 }
 
 /* Safe area helpers for iOS notch / Dynamic Island & Android gesture bars */

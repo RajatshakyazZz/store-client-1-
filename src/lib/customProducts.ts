@@ -249,9 +249,18 @@ export function mapFirestoreDocToBundleProduct(data: any): BundleProduct {
     resellerPrice,
     resellerOriginalPrice: resellerRegularPrice,
     thumbnail:
-      String(data.featured_image || '') ||
+      String(
+        data.featured_image ||
+        data.thumbnail ||
+        data.image ||
+        data.imageUrl ||
+        data.image_url ||
+        data.poster ||
+        ''
+      ).trim() ||
       baseProd?.thumbnail ||
-      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600',
+      (BUNDLE_PRODUCTS && BUNDLE_PRODUCTS[0]?.thumbnail) ||
+      'https://reelsbundles.in/wp-content/uploads/2026/10/500-dr-skeleton-health-reels-bundle-1-2-768x576.png',
     galleryImages,
     previewVideoUrls: (() => {
       const rawUrls: string[] = Array.isArray(data.preview_video_urls) && data.preview_video_urls.length > 0
