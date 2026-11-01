@@ -46,9 +46,13 @@ import { optimizeImageUrl } from '@/lib/imageOptimized';
 import { getBundleContentDetails } from '@/lib/bundleContent';
 import { track } from '@/lib/analytics';
 import { fetchCustomProductBySlug } from '@/lib/customProducts';
+import dynamic from 'next/dynamic';
 import FreeBundleOfferBanner from '@/components/FreeBundleOfferBanner';
-import GrowthProofSection from '@/components/GrowthProofSection';
 import { parseHostedVideoUrl } from '@/lib/videoUtils';
+
+const GrowthProofSection = dynamic(() => import('@/components/GrowthProofSection'), {
+  ssr: false,
+});
 
 interface ProductDetailClientProps {
   product: BundleProduct;

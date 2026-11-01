@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
 import FreeBundleOfferBanner from '@/components/FreeBundleOfferBanner';
 import TrendingMarquee from '@/components/TrendingMarquee';
@@ -9,7 +10,10 @@ import FreshReelsGrid from '@/components/FreshReelsGrid';
 import MembershipPlans from '@/components/MembershipPlans';
 import UpcomingBundles from '@/components/UpcomingBundles';
 import CreatorProof from '@/components/CreatorProof';
-import GrowthProofSection from '@/components/GrowthProofSection';
+
+const GrowthProofSection = dynamic(() => import('@/components/GrowthProofSection'), {
+  ssr: false,
+});
 
 export default function HomePage() {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://vaultworld.shop').replace(/\/+$/, '');

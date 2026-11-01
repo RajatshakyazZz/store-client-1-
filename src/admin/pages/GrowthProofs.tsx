@@ -23,6 +23,7 @@ import { useToast } from '../context/ToastContext';
 import { useAdminTheme } from '../context/AdminThemeContext';
 import ImageUploadField from '../components/common/ImageUploadField';
 import ProductSearchSelector from '../components/common/ProductSearchSelector';
+import ProductFilterDropdown from '../components/common/ProductFilterDropdown';
 
 const DEFAULT_CONFIG: AdminGrowthProofsConfig = {
   enabled: true,
@@ -350,28 +351,16 @@ export default function GrowthProofsPage() {
               )}
             </div>
 
-            {/* Product Filter Selector */}
+            {/* Product Filter Selector with Instant Search Bar */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-400 font-medium flex items-center gap-1 shrink-0">
-                <Filter className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Filter:</span>
-              </span>
-              <select
-                value={productFilter}
-                onChange={(e) => setProductFilter(e.target.value)}
-                className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold focus:outline-none focus:border-purple-500 cursor-pointer"
-              >
-                <option value="all">📁 All Screenshots ({form.items.length})</option>
-                <option value="global">🌐 General / Unassigned ({globalItemsCount})</option>
-                {products.map((p) => {
-                  const count = form.items.filter((it) => it.productSlug === p.slug).length;
-                  return (
-                    <option key={p.slug} value={p.slug}>
-                      📦 {p.name} {count > 0 ? `(${count})` : ''}
-                    </option>
-                  );
-                })}
-              </select>
+              <span className="text-xs text-slate-400 font-medium hidden lg:inline">Filter:</span>
+              <ProductFilterDropdown
+                products={products}
+                selectedFilter={productFilter}
+                onSelectFilter={setProductFilter}
+                items={form.items}
+                isLight={isLight}
+              />
             </div>
           </div>
         </div>

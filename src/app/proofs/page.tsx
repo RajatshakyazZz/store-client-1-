@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Sparkles, ArrowRight, TrendingUp, CheckCircle2, ShieldCheck, Flame } from 'lucide-react';
-import GrowthProofSection from '@/components/GrowthProofSection';
+import ProofsClient from './ProofsClient';
 
 export const metadata: Metadata = {
   title: 'Real Creator Growth Proofs & Results | VaultWorld Store',
@@ -25,9 +25,7 @@ export default function ProofsPage() {
       </div>
 
       {/* Main 3D Growth Proofs Showcase Section */}
-      <div className="rounded-3xl overflow-hidden">
-        <GrowthProofSection />
-      </div>
+      <ProofsClient />
 
       {/* Conversion Banner: Get Started Now */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
