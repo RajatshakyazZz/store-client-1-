@@ -69,7 +69,9 @@ function StoreLayoutInner({ children }: { children: React.ReactNode }) {
         )}
         <Header />
         <main className="flex-grow pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-0 max-w-full overflow-x-clip">
-          {children}
+          <StoreErrorBoundary>
+            {children}
+          </StoreErrorBoundary>
         </main>
         <Footer />
         <CartDrawer />
