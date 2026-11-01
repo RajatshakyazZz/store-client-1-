@@ -270,24 +270,24 @@ export default function ViralBundlesModal() {
 
   return (
     <>
-      {/* 1. FLOATING ACTION TRIGGER PILL (Visible when modal is closed) */}
+      {/* 1. FLOATING ACTION TRIGGER PILL (Visible when modal is closed, perfectly positioned on mobile above bottom nav) */}
       {!isOpen && (
         <aside
           aria-label="Viral Bundles Spotlight"
-          className="fixed bottom-20 sm:bottom-6 left-3 sm:left-5 z-40"
+          className="fixed bottom-[74px] sm:bottom-6 left-3 sm:left-5 z-[55] pointer-events-auto"
         >
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="group px-3 sm:px-4 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-slate-950 via-[#180a2c] to-slate-900 text-white border border-amber-400/50 hover:border-amber-400 shadow-[0_8px_25px_rgba(245,158,11,0.35)] flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
+            className="group px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-slate-950 via-[#1a0c30] to-slate-900 text-white border-2 border-amber-400 hover:border-yellow-300 shadow-[0_6px_25px_rgba(245,158,11,0.5)] flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
             aria-label="Open Viral Bundles Spotlight"
           >
-            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md">
               <Flame className="w-3.5 h-3.5 fill-slate-950 animate-pulse" />
             </div>
 
             <div className="text-left flex items-center gap-1.5">
-              <span className="text-xs sm:text-sm font-black text-amber-300 tracking-tight">
+              <span className="text-xs sm:text-sm font-black text-amber-300 tracking-tight drop-shadow-xs">
                 {popupTitle}
               </span>
               <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black">
@@ -304,7 +304,7 @@ export default function ViralBundlesModal() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="viral-bundles-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
         >
           {/* Backdrop */}
           <div
@@ -315,7 +315,7 @@ export default function ViralBundlesModal() {
           {/* Modal Card - Sized for Mobile & PC */}
           <div
             ref={modalRef}
-            className="relative w-full max-w-lg sm:max-w-xl max-h-[82vh] sm:max-h-[85vh] rounded-2xl sm:rounded-3xl bg-gradient-to-b from-[#140b24] via-[#0d071a] to-[#080410] border border-amber-500/40 text-white shadow-[0_25px_60px_rgba(0,0,0,0.85),0_0_40px_rgba(245,158,11,0.25)] flex flex-col overflow-hidden z-10"
+            className="relative w-full max-w-lg sm:max-w-xl max-h-[85vh] rounded-2xl sm:rounded-3xl bg-gradient-to-b from-[#140b24] via-[#0d071a] to-[#080410] border border-amber-500/40 text-white shadow-[0_25px_60px_rgba(0,0,0,0.85),0_0_40px_rgba(245,158,11,0.25)] flex flex-col overflow-hidden z-10 my-auto"
           >
             {/* Top Glowing Amber Line */}
             <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 shadow-[0_0_12px_rgba(251,191,36,0.8)]" />

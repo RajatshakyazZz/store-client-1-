@@ -13,11 +13,11 @@ export interface HomepagePinnedConfig {
 
 export const DEFAULT_HOMEPAGE_PINNED: HomepagePinnedConfig = {
   enabled: true,
-  pinnedSlugs: [],
+  pinnedSlugs: ['2500-ai-snake2'],
   badgeText: 'VIRAL BUNDLE',
   popupTitle: 'Viral Bundles',
   popupSubtitle: 'Handpicked viral reels packs curated to scale your reach 10x.',
-  autoPopup: true,
+  autoPopup: false,
 };
 
 let cachedPinned: HomepagePinnedConfig | null = null;
