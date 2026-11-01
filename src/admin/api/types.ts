@@ -513,3 +513,13 @@ export interface AdminGrowthProofsConfig {
   updatedAt?: string;
 }
 
+export interface HomepagePinnedConfig {
+  enabled: boolean;
+  pinnedSlugs: string[];
+  badgeText: string;
+  popupTitle?: string;
+  popupSubtitle?: string;
+  autoPopup?: boolean;
+  updatedAt?: string;
+}
+

@@ -79,13 +79,6 @@ export async function POST(req: Request) {
           { merge: true }
         ).catch(() => null);
 
-        // Also update individual product docs if needed
-        for (const slug of config.pinnedSlugs) {
-          try {
-            await setDoc(doc(db, 'products', slug), { is_homepage_top: true }, { merge: true });
-          } catch {}
-        }
-
         // Add audit log
         await addDoc(collection(db, 'audit_logs'), {
           action: 'HOMEPAGE_PINNED_SETTINGS_UPDATE',

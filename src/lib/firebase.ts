@@ -14,14 +14,36 @@ import {
   Firestore,
 } from 'firebase/firestore';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDemoAdminPortalKey_Vaultzet_2026',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'vaultzet-5873e.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'vaultzet-5873e',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'vaultzet-5873e.firebasestorage.app',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '1029384756',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:1029384756:web:8a9b0c1d2e3f4a5b',
-};
+function getResolvedFirebaseConfig() {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('vaultzet_firebase_config');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.apiKey && parsed.projectId) {
+          return {
+            apiKey: parsed.apiKey,
+            authDomain: parsed.authDomain || `${parsed.projectId}.firebaseapp.com`,
+            projectId: parsed.projectId,
+            storageBucket: parsed.storageBucket || `${parsed.projectId}.firebasestorage.app`,
+            messagingSenderId: parsed.messagingSenderId || '1029384756',
+            appId: parsed.appId || '1:1029384756:web:vaultzet',
+          };
+        }
+      }
+    } catch {}
+  }
+  return {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDemoAdminPortalKey_Vaultzet_2026',
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'vaultzet-5873e.firebaseapp.com',
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'vaultzet-5873e',
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'vaultzet-5873e.firebasestorage.app',
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '1029384756',
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:1029384756:web:8a9b0c1d2e3f4a5b',
+  };
+}
+
+const firebaseConfig = getResolvedFirebaseConfig();
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;

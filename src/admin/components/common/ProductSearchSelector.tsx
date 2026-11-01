@@ -104,11 +104,11 @@ export default function ProductSearchSelector({
             <span className="inline-flex items-center gap-1 text-[11px] font-black text-amber-300 bg-amber-400/15 border border-amber-400/30 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
               🎯 Dedicated: {currentProduct.name}
             </span>
-          ) : (
+          ) : allowGeneral ? (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-700/50 px-2 py-0.5 rounded-full self-start sm:self-auto">
               🌐 General / Main Menu Only
             </span>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -130,20 +130,26 @@ export default function ProductSearchSelector({
             <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 border border-purple-500/30">
               <Package className="w-4 h-4" />
             </div>
-          ) : (
+          ) : allowGeneral ? (
             <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center shrink-0 border border-slate-700">
               <Globe className="w-4 h-4" />
+            </div>
+          ) : (
+            <div className="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/30">
+              <Search className="w-4 h-4" />
             </div>
           )}
 
           <div className="flex-1 min-w-0 text-left">
-            <div className="text-xs sm:text-sm font-bold text-white truncate">
-              {currentProduct ? currentProduct.name : generalLabel}
+            <div className={`text-xs sm:text-sm font-bold truncate ${currentProduct ? 'text-white' : allowGeneral ? 'text-white' : 'text-slate-300'}`}>
+              {currentProduct ? currentProduct.name : (allowGeneral ? generalLabel : placeholder)}
             </div>
             <div className="text-[10px] sm:text-[11px] text-slate-400 truncate">
               {currentProduct
-                ? `Assigned to: /product/${currentProduct.slug}`
-                : 'Shows on main /proofs page. Click to search and assign to a specific product.'}
+                ? `Assigned: /product/${currentProduct.slug}`
+                : allowGeneral
+                ? 'Shows on main /proofs page. Click to search and assign to a specific product.'
+                : 'Click to open search and choose a bundle to pin'}
             </div>
           </div>
         </div>

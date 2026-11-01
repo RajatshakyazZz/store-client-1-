@@ -1,3 +1,6 @@
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
 export interface HomepagePinnedConfig {
   enabled: boolean;
   pinnedSlugs: string[]; // Slugs of products pinned to top of homepage in order
@@ -44,18 +47,79 @@ export async function fetchHomepagePinned(force = false): Promise<HomepagePinned
     return cachedPinned;
   }
 
+  const local = getHomepagePinnedSync();
+
   if (typeof window !== 'undefined') {
+    // 1. Direct client Firestore read
+    if (db) {
+      try {
+        const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
+        if (snap && snap.exists()) {
+          const data = snap.data();
+          const loaded: HomepagePinnedConfig = {
+            enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+            pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
+            badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
+            popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
+            popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
+            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
+            updatedAt: data.updatedAt || data.updated_at,
+          };
+          if (loaded.pinnedSlugs.length > 0 || !local.pinnedSlugs?.length) {
+            cachedPinned = loaded;
+            lastPinnedFetch = now;
+            try {
+              localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(loaded));
+            } catch {}
+            return loaded;
+          }
+        }
+
+        const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
+        if (genSnap && genSnap.exists()) {
+          const gData = genSnap.data();
+          if (gData.homepage_pinned && typeof gData.homepage_pinned === 'object') {
+            const data = gData.homepage_pinned;
+            const loaded: HomepagePinnedConfig = {
+              enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+              pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
+              badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
+              popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
+              popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
+              autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
+              updatedAt: data.updatedAt || data.updated_at,
+            };
+            if (loaded.pinnedSlugs.length > 0 || !local.pinnedSlugs?.length) {
+              cachedPinned = loaded;
+              lastPinnedFetch = now;
+              try {
+                localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(loaded));
+              } catch {}
+              return loaded;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Direct client firestore read error for homepage_pinned:', err);
+      }
+    }
+
+    // 2. Fetch from API endpoint
     try {
       const res = await fetch('/api/settings/homepage-pinned', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.config) {
-          cachedPinned = data.config;
-          lastPinnedFetch = now;
-          try {
-            localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(data.config));
-          } catch {}
-          return data.config;
+          const incoming = data.config as HomepagePinnedConfig;
+          // Guard: Only replace local if incoming has pinned slugs or local had none
+          if (incoming.pinnedSlugs?.length || !local.pinnedSlugs?.length) {
+            cachedPinned = incoming;
+            lastPinnedFetch = now;
+            try {
+              localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(incoming));
+            } catch {}
+            return incoming;
+          }
         }
       }
     } catch (e) {
@@ -63,7 +127,7 @@ export async function fetchHomepagePinned(force = false): Promise<HomepagePinned
     }
   }
 
-  return getHomepagePinnedSync();
+  return local;
 }
 
 export async function saveHomepagePinned(config: HomepagePinnedConfig): Promise<boolean> {
@@ -71,11 +135,23 @@ export async function saveHomepagePinned(config: HomepagePinnedConfig): Promise<
   lastPinnedFetch = Date.now();
 
   if (typeof window !== 'undefined') {
+    // 1. Instant local persistence
     try {
       localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(config));
       window.dispatchEvent(new CustomEvent('vaultzet:homepage_pinned_updated', { detail: config }));
     } catch {}
 
+    // 2. Direct Firestore write from client SDK
+    if (db) {
+      try {
+        await setDoc(doc(db, 'store_settings', 'homepage_pinned'), config, { merge: true });
+        await setDoc(doc(db, 'store_settings', 'general'), { homepage_pinned: config }, { merge: true });
+      } catch (err) {
+        console.warn('Direct firestore save error for homepage_pinned:', err);
+      }
+    }
+
+    // 3. Sync to API route
     try {
       const res = await fetch('/api/admin/settings/homepage-pinned', {
         method: 'POST',

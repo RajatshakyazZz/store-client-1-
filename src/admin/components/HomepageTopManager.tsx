@@ -11,8 +11,10 @@ import {
   ExternalLink,
   Flame,
   Plus,
+  RefreshCw,
 } from 'lucide-react';
 import { Product } from '../api/types';
+import { portalApi } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import {
   HomepagePinnedConfig,
@@ -37,48 +39,96 @@ export default function HomepageTopManager({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedToAdd, setSelectedToAdd] = useState<string>('');
 
-  // Load pinned config on mount
+  // Load pinned config on mount from portalApi (Firestore + local cache)
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
-    fetchHomepagePinned(true)
+
+    portalApi
+      .getHomepagePinned()
       .then((cfg) => {
-        if (cfg) {
+        if (isMounted && cfg) {
           setConfig(cfg);
           if (onPinnedChange) onPinnedChange(cfg.pinnedSlugs || []);
         }
       })
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        console.warn('Failed to load pinned config via portalApi:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Map of products for fast lookup
+  // Map of products for fast lookup (handles prefix rb- and ID/slug variations)
   const productMap = useMemo(() => {
     const map = new Map<string, Product>();
     for (const p of products) {
-      if (p.slug) map.set(p.slug.toLowerCase().trim(), p);
-      if (p.id) map.set(String(p.id).toLowerCase().trim(), p);
+      if (p.slug) {
+        const s = p.slug.toLowerCase().trim();
+        map.set(s, p);
+        map.set(s.replace(/^rb-/, ''), p);
+        map.set(`rb-${s}`, p);
+      }
+      if (p.id) {
+        const id = String(p.id).toLowerCase().trim();
+        map.set(id, p);
+        map.set(id.replace(/^rb-/, ''), p);
+        map.set(`rb-${id}`, p);
+      }
     }
     return map;
   }, [products]);
 
-  // Pinned products list in exact order
+  // Pinned products list in exact order (with fallback object so items never vanish while products load)
   const pinnedProductList = useMemo(() => {
-    return config.pinnedSlugs
-      .map((slug, idx) => {
-        const prod = productMap.get(slug.toLowerCase().trim());
-        return {
-          slug,
-          rank: idx + 1,
-          product: prod || null,
-        };
-      })
-      .filter((it) => it.product !== null);
+    return config.pinnedSlugs.map((slug, idx) => {
+      const clean = slug.toLowerCase().trim();
+      const prod =
+        productMap.get(clean) ||
+        productMap.get(clean.replace(/^rb-/, '')) ||
+        productMap.get(`rb-${clean}`);
+
+      return {
+        slug,
+        rank: idx + 1,
+        product:
+          prod ||
+          ({
+            id: slug,
+            name: slug.replace(/^rb-/, '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            slug: slug,
+            price: 99,
+            regular_price: 499,
+            featured_image:
+              'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100',
+            status: 'publish',
+            stock_status: 'instock',
+          } as Product),
+      };
+    });
   }, [config.pinnedSlugs, productMap]);
 
   // Available products for the search selector (excluding already pinned ones)
   const productOptions = useMemo(() => {
-    const pinnedSet = new Set(config.pinnedSlugs.map((s) => s.toLowerCase().trim()));
+    const pinnedSet = new Set(
+      config.pinnedSlugs.flatMap((s) => {
+        const c = s.toLowerCase().trim();
+        return [c, c.replace(/^rb-/, ''), `rb-${c}`];
+      })
+    );
+
     return products
-      .filter((p) => p.slug && !pinnedSet.has(p.slug.toLowerCase().trim()))
+      .filter((p) => {
+        if (!p.slug) return false;
+        const s = p.slug.toLowerCase().trim();
+        const id = String(p.id || '').toLowerCase().trim();
+        return !pinnedSet.has(s) && !pinnedSet.has(id);
+      })
       .map((p) => ({
         id: String(p.id),
         slug: p.slug,
@@ -89,7 +139,8 @@ export default function HomepageTopManager({
   const handlePinProduct = (slug: string) => {
     if (!slug) return;
     const cleanSlug = slug.toLowerCase().trim();
-    if (config.pinnedSlugs.map((s) => s.toLowerCase().trim()).includes(cleanSlug)) {
+    const existing = config.pinnedSlugs.map((s) => s.toLowerCase().trim());
+    if (existing.includes(cleanSlug)) {
       return;
     }
 
@@ -125,21 +176,31 @@ export default function HomepageTopManager({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const ok = await saveHomepagePinned(config);
-      if (ok) {
-        success(
-          'Homepage Top Saved!',
-          `${config.pinnedSlugs.length} products pinned to top of homepage.`
-        );
-      } else {
-        error('Save Failed', 'Could not sync pinned settings to cloud.');
-      }
+      // 1. Save directly to Cloud Firestore & localStorage via portalApi
+      const updated = await portalApi.updateHomepagePinned(config);
+      // 2. Also trigger sync helper
+      await saveHomepagePinned(config);
+
+      success(
+        'Viral Bundles Saved to Cloud!',
+        `${config.pinnedSlugs.length} products pinned & spotlight saved in Firestore database.`
+      );
     } catch (err: any) {
-      error('Error', err.message || 'Failed to save settings.');
+      error('Save Failed', err.message || 'Could not save pinned settings to database.');
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Find details of the product currently selected in the dropdown
+  const selectedProductDetail = useMemo(() => {
+    if (!selectedToAdd) return null;
+    return (
+      productMap.get(selectedToAdd.toLowerCase().trim()) ||
+      productMap.get(selectedToAdd.toLowerCase().replace(/^rb-/, '').trim()) ||
+      productOptions.find((p) => p.slug === selectedToAdd)
+    );
+  }, [selectedToAdd, productMap, productOptions]);
 
   return (
     <div className="rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-purple-950/40 border border-amber-500/30 p-4 sm:p-6 shadow-xl space-y-5">
@@ -154,8 +215,8 @@ export default function HomepageTopManager({
               <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
                 🔥 Viral Bundles (Homepage Top &amp; Popup Spotlight)
               </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                {pinnedProductList.length} Bundles Active
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm">
+                {pinnedProductList.length} BUNDLES ACTIVE
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
@@ -169,10 +230,19 @@ export default function HomepageTopManager({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/25 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
           >
-            <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving...' : 'Save Viral Bundles'}</span>
+            {isSaving ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Saving to Database...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                <span>Save Viral Bundles</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -207,8 +277,15 @@ export default function HomepageTopManager({
 
       {/* Product Selector with Search */}
       <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
-        <div className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
-          <span>🔍 Search and Pin Any Store Product to Top:</span>
+        <div className="text-xs font-bold text-purple-300 flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            🔍 Search and Pin Any Store Product to Top:
+          </span>
+          {selectedToAdd && (
+            <span className="text-[11px] text-amber-300 font-semibold animate-pulse">
+              ✓ Ready to pin below! Click button →
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -227,12 +304,27 @@ export default function HomepageTopManager({
             type="button"
             onClick={() => handlePinProduct(selectedToAdd)}
             disabled={!selectedToAdd}
-            className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer"
+            className={`px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shrink-0 cursor-pointer ${
+              selectedToAdd
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white ring-2 ring-purple-400 shadow-purple-500/30 active:scale-95 animate-pulse'
+                : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+            }`}
           >
             <Plus className="w-4 h-4" />
-            <span>Pin to Homepage Top</span>
+            <span>{selectedToAdd ? '+ Pin Selected Bundle' : '+ Pin to Homepage Top'}</span>
           </button>
         </div>
+
+        {selectedProductDetail && (
+          <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between text-xs text-purple-200">
+            <span className="truncate">
+              Selected: <strong>{selectedProductDetail.name}</strong>
+            </span>
+            <span className="text-[11px] text-amber-400 font-semibold shrink-0 ml-2">
+              Click &ldquo;+ Pin Selected Bundle&rdquo; to add to top list
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Pinned Products List */}
@@ -240,7 +332,7 @@ export default function HomepageTopManager({
         <div className="p-6 text-center rounded-2xl bg-slate-950/40 border border-dashed border-slate-800 text-slate-400 text-xs space-y-1">
           <p className="font-semibold text-slate-300">No products currently pinned to top.</p>
           <p className="text-[11px] text-slate-500">
-            Search any product above and click &ldquo;Pin to Homepage Top&rdquo; to place it in the #1 position on the store homepage!
+            Search any product above and click &ldquo;+ Pin Selected Bundle&rdquo; to place it in the #1 position on the store homepage!
           </p>
         </div>
       ) : (
@@ -293,7 +385,7 @@ export default function HomepageTopManager({
                       type="button"
                       onClick={() => handleMove(idx, 'up')}
                       disabled={idx === 0}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 transition-all"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 transition-all cursor-pointer"
                       title="Move Up"
                     >
                       <ArrowUp className="w-3.5 h-3.5" />
@@ -303,7 +395,7 @@ export default function HomepageTopManager({
                       type="button"
                       onClick={() => handleMove(idx, 'down')}
                       disabled={idx === pinnedProductList.length - 1}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 transition-all"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 transition-all cursor-pointer"
                       title="Move Down"
                     >
                       <ArrowDown className="w-3.5 h-3.5" />
@@ -312,7 +404,7 @@ export default function HomepageTopManager({
                     <button
                       type="button"
                       onClick={() => handleUnpin(slug)}
-                      className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all ml-1"
+                      className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all ml-1 cursor-pointer"
                       title="Unpin from Top"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

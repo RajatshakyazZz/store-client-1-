@@ -35,6 +35,9 @@ export async function GET() {
               enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
               pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
               badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
+              popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
+              popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
+              autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
               updatedAt: data.updatedAt || data.updated_at,
             };
             return NextResponse.json({ success: true, config });

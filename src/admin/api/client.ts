@@ -53,6 +53,7 @@ import {
   GlobalBumpOffer,
   FreeBundleOffer,
   AdminGrowthProofsConfig,
+  HomepagePinnedConfig,
 } from './types';
 import { db, logAdminAction } from '../lib/firebase';
 import {
@@ -3397,6 +3398,152 @@ class PortalApiClient {
       action: 'UPDATE_GROWTH_PROOFS',
       module: 'Commerce',
       details: `Updated Growth Proofs: ${merged.items?.length || 0} screenshots (Status: ${merged.enabled ? 'ACTIVE' : 'OFF'})`,
+    });
+
+    return merged;
+  }
+
+  // ==========================================
+  // 20. HOMEPAGE PINNED VIRAL BUNDLES SPOTLIGHT
+  // ==========================================
+  async getHomepagePinned(): Promise<HomepagePinnedConfig> {
+    const defaultVal: HomepagePinnedConfig = {
+      enabled: true,
+      pinnedSlugs: [],
+      badgeText: 'VIRAL BUNDLE',
+      popupTitle: 'Viral Bundles',
+      popupSubtitle: 'Handpicked viral reels packs curated to scale your reach 10x.',
+      autoPopup: true,
+    };
+
+    let cached: HomepagePinnedConfig | null = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('vaultzet_homepage_pinned');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            cached = { ...defaultVal, ...parsed };
+          }
+        }
+      } catch {}
+    }
+
+    // 1. Direct Firestore read (primary source of truth in authenticated admin browser)
+    if (db) {
+      try {
+        const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
+        if (snap && snap.exists()) {
+          const data = snap.data();
+          const cfg: HomepagePinnedConfig = {
+            enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+            pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
+            badgeText: data.badgeText || defaultVal.badgeText,
+            popupTitle: data.popupTitle || defaultVal.popupTitle,
+            popupSubtitle: data.popupSubtitle || defaultVal.popupSubtitle,
+            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
+            updatedAt: data.updatedAt || data.updated_at,
+          };
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(cfg));
+            } catch {}
+          }
+          return cfg;
+        }
+
+        const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
+        if (genSnap && genSnap.exists()) {
+          const gData = genSnap.data();
+          if (gData.homepage_pinned && typeof gData.homepage_pinned === 'object') {
+            const data = gData.homepage_pinned;
+            const cfg: HomepagePinnedConfig = {
+              enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+              pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
+              badgeText: data.badgeText || defaultVal.badgeText,
+              popupTitle: data.popupTitle || defaultVal.popupTitle,
+              popupSubtitle: data.popupSubtitle || defaultVal.popupSubtitle,
+              autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
+              updatedAt: data.updatedAt || data.updated_at,
+            };
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(cfg));
+              } catch {}
+            }
+            return cfg;
+          }
+        }
+      } catch (err) {
+        console.warn('Direct Firestore read error for homepage_pinned:', err);
+      }
+    }
+
+    // 2. Fallback to API route
+    try {
+      const res = await fetch('/api/admin/settings/homepage-pinned', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.config && Array.isArray(data.config.pinnedSlugs) && data.config.pinnedSlugs.length > 0) {
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(data.config));
+            } catch {}
+          }
+          return data.config;
+        }
+      }
+    } catch {}
+
+    return cached || defaultVal;
+  }
+
+  async updateHomepagePinned(data: Partial<HomepagePinnedConfig>): Promise<HomepagePinnedConfig> {
+    const existing = await this.getHomepagePinned();
+    const merged: HomepagePinnedConfig = {
+      ...existing,
+      ...data,
+      pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : existing.pinnedSlugs,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1. Direct Firestore write (guaranteed persistence in admin browser)
+    if (db) {
+      try {
+        const cleanPayload = sanitizePayload(merged);
+        await setDoc(doc(db, 'store_settings', 'homepage_pinned'), cleanPayload, { merge: true });
+        try {
+          await setDoc(doc(db, 'store_settings', 'general'), { homepage_pinned: cleanPayload }, { merge: true });
+        } catch {}
+      } catch (err) {
+        console.error('Direct Firestore write error for homepage_pinned:', err);
+      }
+    }
+
+    // 2. Send to server API route as background sync
+    try {
+      await fetch('/api/admin/settings/homepage-pinned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(merged),
+      });
+    } catch (e) {
+      console.warn('Server API sync error for homepage_pinned:', e);
+    }
+
+    // 3. Save in localStorage for instant offline access
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('vaultzet:homepage_pinned_updated', { detail: merged }));
+      } catch {}
+    }
+
+    await logAdminAction({
+      adminEmail: 'admin@vaultzet.com',
+      action: 'UPDATE_HOMEPAGE_PINNED',
+      module: 'Commerce',
+      details: `Updated homepage pinned viral bundles: ${merged.pinnedSlugs?.length || 0} products pinned (Status: ${merged.enabled ? 'ACTIVE' : 'OFF'})`,
     });
 
     return merged;

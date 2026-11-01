@@ -70,6 +70,8 @@ rules_version = '2';
 //    - downloadable: bool (optional)
 //    - is_deleted: bool (optional)
 //    - deleted_at: string (optional, <= 100 chars)
+//    - is_homepage_top: bool (optional)
+//    - homepage_rank: number (optional, 0..1000)
 //    - status: string (optional, in ['publish', 'draft', 'pending', 'private', 'trash'])
 //    - stock_status: string (optional, in ['instock', 'outofstock', 'onbackorder'])
 //    - category: string (optional, <= 100 chars)
@@ -86,7 +88,7 @@ rules_version = '2';
 //    - Protection: Read open for storefront; full create, update, delete for admin panel catalog maintenance.
 //
 // 3. store_settings:
-//    - Supported Documents: 'general', 'branding', 'site_mode', 'meta_pixel', 'whatsapp', 'cashfree', 'payu', 'rankmath_seo', 'dnp_meta', 'mmc_analytics', 'litespeed_cache', 'reseller', 'telegram', 'bump_offer', 'free_bundle_offer', 'growth_proofs', 'earning_proofs'
+//    - Supported Documents: 'general', 'branding', 'site_mode', 'meta_pixel', 'whatsapp', 'cashfree', 'payu', 'rankmath_seo', 'dnp_meta', 'mmc_analytics', 'litespeed_cache', 'reseller', 'telegram', 'bump_offer', 'free_bundle_offer', 'growth_proofs', 'earning_proofs', 'homepage_pinned'
 //    - Supports general, branding, SEO, analytics, payment gateway, WhatsApp, and Telegram bot configuration fields
 //    - String fields bounded to prevent resource exhaustion / DoS
 //    - Protection: Deletion strictly denied.
@@ -442,6 +444,8 @@ service cloud.firestore {
         isValidOptionalBool(data, 'downloadable') &&
         isValidOptionalBool(data, 'is_deleted') &&
         isValidOptionalString(data, 'deleted_at', 100) &&
+        isValidOptionalBool(data, 'is_homepage_top') &&
+        isValidOptionalNumber(data, 'homepage_rank', 0, 1000) &&
         (!('status' in data) || data.status == null || data.status in ['publish', 'draft', 'pending', 'private', 'trash']) &&
         (!('stock_status' in data) || data.stock_status == null || data.stock_status in ['instock', 'outofstock', 'onbackorder']) &&
         isValidOptionalString(data, 'category', 100) &&
@@ -563,6 +567,13 @@ service cloud.firestore {
         isValidOptionalMap(data, 'free_bundle_offer') &&
         isValidOptionalMap(data, 'growth_proofs') &&
         isValidOptionalMap(data, 'earning_proofs') &&
+        isValidOptionalMap(data, 'homepage_pinned') &&
+        isValidOptionalList(data, 'pinnedSlugs', 100) &&
+        isValidOptionalString(data, 'badgeText', 100) &&
+        isValidOptionalString(data, 'popupTitle', 200) &&
+        isValidOptionalString(data, 'popupSubtitle', 500) &&
+        isValidOptionalBool(data, 'autoPopup') &&
+        isValidOptionalString(data, 'updatedAt', 100) &&
         isValidOptionalString(data, 'banner_image', 1000) &&
         isValidOptionalString(data, 'headline', 300) &&
         isValidOptionalString(data, 'subheadline', 500) &&
@@ -908,7 +919,7 @@ service cloud.firestore {
       allow create, update: if settingId in [
         'general', 'branding', 'site_mode', 'meta_pixel', 'whatsapp', 'cashfree', 'payu',
         'rankmath_seo', 'dnp_meta', 'mmc_analytics', 'litespeed_cache', 'reseller', 'telegram',
-        'bump_offer', 'free_bundle_offer', 'growth_proofs', 'earning_proofs'
+        'bump_offer', 'free_bundle_offer', 'growth_proofs', 'earning_proofs', 'homepage_pinned'
       ] && isValidStoreSetting(request.resource.data);
 
       // Settings documents cannot be deleted
