@@ -11,6 +11,7 @@ import ViralBundlesModal from '@/components/ViralBundlesModal';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import CookieConsentBanner from '@/components/CookieConsentBanner';
 import MaintenanceGate from '@/components/MaintenanceGate';
+import StoreErrorBoundary from '@/components/StoreErrorBoundary';
 import { CartProvider } from '@/context/CartContext';
 import { StoreSettingsProvider, useStoreSettings } from '@/context/StoreSettingsContext';
 import { ResellerAuthProvider } from '@/context/ResellerAuthContext';
@@ -72,8 +73,12 @@ function StoreLayoutInner({ children }: { children: React.ReactNode }) {
         </main>
         <Footer />
         <CartDrawer />
-        <FreeBundlesModal />
-        <ViralBundlesModal />
+        <StoreErrorBoundary>
+          <FreeBundlesModal />
+        </StoreErrorBoundary>
+        <StoreErrorBoundary>
+          <ViralBundlesModal />
+        </StoreErrorBoundary>
         <MobileBottomNav />
         <WhatsAppButton />
         <CookieConsentBanner />

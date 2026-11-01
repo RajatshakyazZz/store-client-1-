@@ -11,6 +11,7 @@ import FreshReelsGrid from '@/components/FreshReelsGrid';
 import MembershipPlans from '@/components/MembershipPlans';
 import UpcomingBundles from '@/components/UpcomingBundles';
 import CreatorProof from '@/components/CreatorProof';
+import StoreErrorBoundary from '@/components/StoreErrorBoundary';
 
 const GrowthProofSection = dynamic(() => import('@/components/GrowthProofSection'), {
   ssr: false,
@@ -66,36 +67,56 @@ export default function HomePage() {
       />
 
       {/* Hero with Typewriter & 3D Cards */}
-      <Hero />
+      <StoreErrorBoundary>
+        <Hero />
+      </StoreErrorBoundary>
 
       {/* Special Free Bundles Offer Banner */}
-      <FreeBundleOfferBanner variant="home" />
+      <StoreErrorBoundary>
+        <FreeBundleOfferBanner variant="home" />
+      </StoreErrorBoundary>
 
       {/* Trending Bundles Auto-Marquee */}
-      <TrendingMarquee />
+      <StoreErrorBoundary>
+        <TrendingMarquee />
+      </StoreErrorBoundary>
 
       {/* Interactive Smartphone Video Preview Section */}
-      <ReelsVideoPreview />
+      <StoreErrorBoundary>
+        <ReelsVideoPreview />
+      </StoreErrorBoundary>
 
       {/* Fresh Reels Grid */}
-      <FreshReelsGrid />
+      <StoreErrorBoundary>
+        <FreshReelsGrid />
+      </StoreErrorBoundary>
 
       {/* All Access Personal vs Reseller Plans */}
-      <MembershipPlans />
+      <StoreErrorBoundary>
+        <MembershipPlans />
+      </StoreErrorBoundary>
 
       {/* Upcoming Bundles & Notify Me */}
-      <UpcomingBundles />
+      <StoreErrorBoundary>
+        <UpcomingBundles />
+      </StoreErrorBoundary>
 
       {/* 3D Creator Growth Proofs (febric-style 3D Coverflow) */}
       <div id="growth-proofs">
-        <GrowthProofSection />
+        <StoreErrorBoundary>
+          <GrowthProofSection />
+        </StoreErrorBoundary>
       </div>
 
       {/* Instant My Orders & Downloads Quick Access Bar */}
-      <MyOrdersQuickAccess />
+      <StoreErrorBoundary>
+        <MyOrdersQuickAccess />
+      </StoreErrorBoundary>
 
       {/* Creator Growth Analytics & Testimonials */}
-      <CreatorProof />
+      <StoreErrorBoundary>
+        <CreatorProof />
+      </StoreErrorBoundary>
     </div>
   );
 }

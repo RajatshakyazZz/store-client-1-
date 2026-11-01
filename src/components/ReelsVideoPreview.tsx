@@ -181,9 +181,6 @@ export default function ReelsVideoPreview() {
                     <video
                       ref={(el) => {
                         videoRefs.current[item.id] = el;
-                        if (el) {
-                          el.play().catch(() => {});
-                        }
                       }}
                       src={item.videoUrl}
                       poster={optimizeImageUrl(reelPoster, 256, 75)}

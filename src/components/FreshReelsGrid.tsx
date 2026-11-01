@@ -17,13 +17,17 @@ import { BundleProduct } from '@/types';
 export default function FreshReelsGrid() {
   const { addToCart, buyNow } = useCart();
   const [freshBundles, setFreshBundles] = useState<BundleProduct[]>(() => {
-    const local = getLocalCustomProductsSync();
-    const all = getAllCatalogBundles(local, BUNDLE_PRODUCTS);
-    return all.filter((b) => !b.isUpcoming && !isDemoOrInvalidBundle(b)).slice(0, 8);
+    return BUNDLE_PRODUCTS.filter((b) => !b.isUpcoming && !isDemoOrInvalidBundle(b)).slice(0, 8);
   });
 
   useEffect(() => {
     const loadBundles = () => {
+      const local = getLocalCustomProductsSync();
+      if (local && local.length > 0) {
+        const all = getAllCatalogBundles(local, BUNDLE_PRODUCTS);
+        setFreshBundles(all.filter((b) => !b.isUpcoming && !isDemoOrInvalidBundle(b)).slice(0, 8));
+      }
+
       fetchCustomProducts().then((res) => {
         const all = getAllCatalogBundles(res, BUNDLE_PRODUCTS);
         setFreshBundles(all.filter((b) => !b.isUpcoming && !isDemoOrInvalidBundle(b)).slice(0, 8));

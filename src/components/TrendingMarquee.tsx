@@ -16,12 +16,16 @@ import { BundleProduct } from '@/types';
 export default function TrendingMarquee() {
   const { addToCart, buyNow } = useCart();
   const [items, setItems] = useState<BundleProduct[]>(() => {
-    const local = getLocalCustomProductsSync();
-    const all = getAllCatalogBundles(local, BUNDLE_PRODUCTS);
-    return all.filter((b) => !b.isUpcoming).slice(0, 6);
+    return BUNDLE_PRODUCTS.filter((b) => !b.isUpcoming).slice(0, 6);
   });
 
   useEffect(() => {
+    const local = getLocalCustomProductsSync();
+    if (local && local.length > 0) {
+      const all = getAllCatalogBundles(local, BUNDLE_PRODUCTS);
+      setItems(all.filter((b) => !b.isUpcoming).slice(0, 6));
+    }
+
     fetchCustomProducts().then((res) => {
       const all = getAllCatalogBundles(res, BUNDLE_PRODUCTS);
       setItems(all.filter((b) => !b.isUpcoming).slice(0, 6));
