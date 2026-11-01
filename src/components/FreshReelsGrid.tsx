@@ -23,10 +23,21 @@ export default function FreshReelsGrid() {
   });
 
   useEffect(() => {
-    fetchCustomProducts().then((res) => {
-      const all = getAllCatalogBundles(res, BUNDLE_PRODUCTS);
-      setFreshBundles(all.filter((b) => !b.isUpcoming && !isDemoOrInvalidBundle(b)).slice(0, 8));
-    }).catch(() => {});
+    const loadBundles = () => {
+      fetchCustomProducts().then((res) => {
+        const all = getAllCatalogBundles(res, BUNDLE_PRODUCTS);
+        setFreshBundles(all.filter((b) => !b.isUpcoming && !isDemoOrInvalidBundle(b)).slice(0, 8));
+      }).catch(() => {});
+    };
+
+    loadBundles();
+
+    const handlePinnedUpdate = () => {
+      loadBundles();
+    };
+
+    window.addEventListener('vaultzet:homepage_pinned_updated', handlePinnedUpdate);
+    return () => window.removeEventListener('vaultzet:homepage_pinned_updated', handlePinnedUpdate);
   }, []);
 
   return (
@@ -99,7 +110,12 @@ export default function FreshReelsGrid() {
 
                     {/* Corner Ribbon */}
                     <div className="absolute top-0 right-0 overflow-hidden w-20 h-20 sm:w-24 sm:h-24 pointer-events-none">
-                      {isTrending ? (
+                      {bundle.isHomepageTop ? (
+                        <div className="absolute transform rotate-45 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-black text-[7px] sm:text-[8.5px] py-0.5 sm:py-1 right-[-34px] sm:right-[-32px] top-[14px] sm:top-[18px] w-[110px] sm:w-[120px] text-center shadow-lg flex items-center justify-center gap-0.5 border-y border-amber-300">
+                          <span>⭐</span>
+                          <span>TOP PICK</span>
+                        </div>
+                      ) : isTrending ? (
                         <div className="absolute transform rotate-45 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-[7px] sm:text-[8px] py-0.5 sm:py-1 right-[-34px] sm:right-[-32px] top-[14px] sm:top-[18px] w-[110px] sm:w-[120px] text-center shadow-md flex items-center justify-center gap-0.5">
                           <span>👑</span>
                           <span>TRENDING</span>

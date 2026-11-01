@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Play, ArrowRight, FolderKanban, Film, ShieldCheck } from 'lucide-react';
+import { Play, ArrowRight, FolderKanban, Film, ShieldCheck, FolderOpen } from 'lucide-react';
 import { BUNDLE_PRODUCTS } from '@/data/bundles';
 import { optimizeImageUrl } from '@/lib/imageOptimized';
 
@@ -120,12 +120,12 @@ export default function Hero() {
                 Download high-converting, professional reels bundles for Instagram, YouTube Shorts and Facebook. Pick your niche, preview sample videos, and get instant cloud access after purchase.
               </p>
 
-              {/* Action Buttons - Side by Side on Mobile */}
-              <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-3.5 pt-0.5 sm:pt-1">
+              {/* Action Buttons - Side by Side on Mobile & PC */}
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-3 pt-0.5 sm:pt-1">
                 <Link
                   href="/shop"
                   prefetch={false}
-                  className="px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-[12.5px] sm:text-[14px] flex items-center justify-center gap-1.5 sm:gap-2.5 shadow-[0_10px_24px_rgba(245,158,11,0.32)] hover:scale-[1.02] active:scale-95 transition-all"
+                  className="px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-[12px] sm:text-[14px] flex items-center justify-center gap-1.5 sm:gap-2 shadow-[0_10px_24px_rgba(245,158,11,0.32)] hover:scale-[1.02] active:scale-95 transition-all"
                 >
                   <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-black/10 flex items-center justify-center text-[10px] sm:text-xs leading-none shrink-0 font-black">
                     👑
@@ -134,12 +134,21 @@ export default function Hero() {
                   <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 stroke-[2.5]" />
                 </Link>
 
+                <Link
+                  href="/my-order"
+                  prefetch={false}
+                  className="px-3 sm:px-5 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-slate-950 hover:bg-slate-900 text-amber-400 border border-amber-500/40 font-black text-[12px] sm:text-[14px] flex items-center justify-center gap-1.5 shadow-md hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  <FolderOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="truncate">My Orders &amp; Drive</span>
+                </Link>
+
                 <a
                   href="#rbui-preview"
-                  className="px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-white text-slate-900 border border-slate-300 hover:border-amber-400 font-extrabold text-[12.5px] sm:text-[14px] flex items-center justify-center gap-1.5 sm:gap-2.5 shadow-xs hover:shadow-md transition-all hover:bg-amber-50/50 active:scale-95"
+                  className="col-span-2 sm:col-span-1 px-3 sm:px-5 py-2 sm:py-3.5 rounded-xl sm:rounded-2xl bg-white text-slate-900 border border-slate-300 hover:border-amber-400 font-extrabold text-[12px] sm:text-[14px] flex items-center justify-center gap-1.5 shadow-xs hover:shadow-md transition-all hover:bg-amber-50/50 active:scale-95"
                 >
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-950 flex items-center justify-center text-amber-400 shrink-0">
-                    <Play className="w-2 h-2 sm:w-2.5 sm:h-2.5 fill-amber-400 ml-0.5" />
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-950 flex items-center justify-center text-amber-400 shrink-0">
+                    <Play className="w-2 h-2 fill-amber-400 ml-0.5" />
                   </div>
                   <span className="truncate">View Previews</span>
                 </a>

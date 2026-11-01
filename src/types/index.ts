@@ -21,6 +21,8 @@ export interface BundleProduct {
   isHot?: boolean;
   isTrending?: boolean;
   isUpcoming?: boolean;
+  isHomepageTop?: boolean;
+  homepageRank?: number;
   rating: number;
   reviewCount: number;
   resolution: string;

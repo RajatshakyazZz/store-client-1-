@@ -3,6 +3,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { BUNDLE_PRODUCTS } from '@/data/bundles';
 import { isLegacyScrapedVideoUrl } from '@/lib/videoUtils';
+import { getHomepagePinnedSync } from '@/lib/homepagePinnedSettings';
 
 // Helper to reliably detect and filter out demo, placeholder, deleted, or dummy test bundles
 export function isDemoOrInvalidBundle(p: any): boolean {
@@ -581,7 +582,50 @@ export function getAllCatalogBundles(
     });
 
   // Brand-new products placed on top, existing products preserve curated order with updated prices
-  return [...brandNewCustom, ...updatedInitial].filter((b) => !isDemoOrInvalidBundle(b));
+  const rawBundles = [...brandNewCustom, ...updatedInitial].filter((b) => !isDemoOrInvalidBundle(b));
+
+  // Prioritize homepage-pinned products to the absolute top of the catalog
+  const pinnedConfig = getHomepagePinnedSync();
+  const pinnedSlugs =
+    pinnedConfig && pinnedConfig.enabled && Array.isArray(pinnedConfig.pinnedSlugs)
+      ? pinnedConfig.pinnedSlugs
+      : [];
+
+  if (pinnedSlugs.length > 0) {
+    const pinnedMap = new Map<string, number>();
+    pinnedSlugs.forEach((slug, idx) => {
+      pinnedMap.set(slug.toLowerCase().trim(), idx);
+    });
+
+    const pinnedItems: BundleProduct[] = [];
+    const nonPinnedItems: BundleProduct[] = [];
+
+    for (const item of rawBundles) {
+      const sKey = (item.slug || '').toLowerCase().trim();
+      const idKey = String(item.id || '').toLowerCase().trim();
+      if (pinnedMap.has(sKey) || pinnedMap.has(idKey)) {
+        pinnedItems.push({
+          ...item,
+          isHomepageTop: true,
+          homepageRank: (pinnedMap.get(sKey) ?? pinnedMap.get(idKey) ?? 0) + 1,
+        });
+      } else {
+        nonPinnedItems.push(item);
+      }
+    }
+
+    pinnedItems.sort((a, b) => {
+      const rankA =
+        pinnedMap.get(a.slug.toLowerCase()) ?? pinnedMap.get(String(a.id).toLowerCase()) ?? 999;
+      const rankB =
+        pinnedMap.get(b.slug.toLowerCase()) ?? pinnedMap.get(String(b.id).toLowerCase()) ?? 999;
+      return rankA - rankB;
+    });
+
+    return [...pinnedItems, ...nonPinnedItems];
+  }
+
+  return rawBundles;
 }
 
 const serverSingleProductCache = new Map<string, { product: BundleProduct | null; cachedAt: number }>();

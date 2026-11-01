@@ -38,6 +38,7 @@ import DataTable, { Column } from '../components/common/DataTable';
 import ImageUploadField from '../components/common/ImageUploadField';
 import GalleryImageManager from '../components/common/GalleryImageManager';
 import VideoPreviewField from '../components/common/VideoPreviewField';
+import HomepageTopManager from '../components/HomepageTopManager';
 import { isLegacyScrapedVideoUrl } from '@/lib/videoUtils';
 
 export default function Products() {
@@ -1013,7 +1014,10 @@ export default function Products() {
       {/* TAB 1: ALL PRODUCTS TABLE */}
       {/* ========================================================= */}
       {activeTab === 'all' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
+          {/* Homepage Top Products Spotlight Manager */}
+          <HomepageTopManager products={products} />
+
           {/* Category Filter Pills Toolbar - Mobile Smooth Scroll */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 admin-touch-scroll admin-no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
             <button

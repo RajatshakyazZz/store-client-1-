@@ -3,6 +3,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import Hero from '@/components/Hero';
+import MyOrdersQuickAccess from '@/components/MyOrdersQuickAccess';
 import FreeBundleOfferBanner from '@/components/FreeBundleOfferBanner';
 import TrendingMarquee from '@/components/TrendingMarquee';
 import ReelsVideoPreview from '@/components/ReelsVideoPreview';
@@ -66,6 +67,9 @@ export default function HomePage() {
 
       {/* Hero with Typewriter & 3D Cards */}
       <Hero />
+
+      {/* Instant My Orders & Downloads Quick Access Bar (Mobile & PC) */}
+      <MyOrdersQuickAccess />
 
       {/* Special Free Bundles Offer Banner */}
       <FreeBundleOfferBanner variant="home" />
