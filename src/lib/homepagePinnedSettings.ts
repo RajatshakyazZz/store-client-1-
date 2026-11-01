@@ -1,14 +1,20 @@
 export interface HomepagePinnedConfig {
   enabled: boolean;
   pinnedSlugs: string[]; // Slugs of products pinned to top of homepage in order
-  badgeText: string;     // Default: 'TOP PICK'
+  badgeText: string;     // Default: 'VIRAL BUNDLE'
+  popupTitle?: string;   // Default: 'Viral Bundles'
+  popupSubtitle?: string;// Default: 'Handpicked viral reels packs curated to scale your reach 10x.'
+  autoPopup?: boolean;   // Default: true
   updatedAt?: string;
 }
 
 export const DEFAULT_HOMEPAGE_PINNED: HomepagePinnedConfig = {
   enabled: true,
   pinnedSlugs: [],
-  badgeText: 'TOP PICK',
+  badgeText: 'VIRAL BUNDLE',
+  popupTitle: 'Viral Bundles',
+  popupSubtitle: 'Handpicked viral reels packs curated to scale your reach 10x.',
+  autoPopup: true,
 };
 
 let cachedPinned: HomepagePinnedConfig | null = null;

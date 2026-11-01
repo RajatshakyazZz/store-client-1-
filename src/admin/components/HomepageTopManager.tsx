@@ -147,19 +147,19 @@ export default function HomepageTopManager({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(251,191,36,0.2)]">
-            <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+            <Flame className="w-5 h-5 text-amber-400 fill-amber-400 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base sm:text-lg font-black text-white tracking-tight">
-                Homepage Top Spotlight (Featured Bundles)
+                🔥 Viral Bundles (Homepage Top &amp; Popup Spotlight)
               </h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                {pinnedProductList.length} Pinned
+                {pinnedProductList.length} Bundles Active
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-              Yahan se aap kisi bhi product ko select karke store ke homepage par <strong>Top Position</strong> par laga sakte hain. Buyers ko ye product sabse pehle dikhega.
+              Aap jis product ko yahan pin karenge, store par uska ek <strong>&ldquo;Viral Bundles&rdquo;</strong> ka pop-up modal aur floating pill banke aayega, aur homepage par bhi ye products sabse top par show honge.
             </p>
           </div>
         </div>
@@ -172,8 +172,36 @@ export default function HomepageTopManager({
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
           >
             <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving...' : 'Save Top Order'}</span>
+            <span>{isSaving ? 'Saving...' : 'Save Viral Bundles'}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Popup Settings Quick Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+        <div>
+          <label className="block text-[11px] font-bold text-slate-400 mb-1">
+            Popup Title (Customer Display)
+          </label>
+          <input
+            type="text"
+            value={config.popupTitle || 'Viral Bundles'}
+            onChange={(e) => setConfig({ ...config, popupTitle: e.target.value })}
+            placeholder="Viral Bundles"
+            className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-amber-400 font-bold"
+          />
+        </div>
+
+        <div className="flex items-center justify-between sm:justify-end gap-3 pt-4 sm:pt-0">
+          <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.autoPopup !== false}
+              onChange={(e) => setConfig({ ...config, autoPopup: e.target.checked })}
+              className="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-amber-400"
+            />
+            <span className="font-semibold text-xs">Auto-Open Popup on Store Visit</span>
+          </label>
         </div>
       </div>
 

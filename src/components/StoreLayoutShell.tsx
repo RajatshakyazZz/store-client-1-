@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import CartDrawer from '@/components/CartDrawer';
 import FreeBundlesModal from '@/components/FreeBundlesModal';
+import ViralBundlesModal from '@/components/ViralBundlesModal';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import CookieConsentBanner from '@/components/CookieConsentBanner';
 import MaintenanceGate from '@/components/MaintenanceGate';
@@ -72,6 +73,7 @@ function StoreLayoutInner({ children }: { children: React.ReactNode }) {
         <Footer />
         <CartDrawer />
         <FreeBundlesModal />
+        <ViralBundlesModal />
         <MobileBottomNav />
         <WhatsAppButton />
         <CookieConsentBanner />

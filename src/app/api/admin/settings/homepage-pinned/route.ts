@@ -28,6 +28,9 @@ export async function GET() {
             enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
             pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
             badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
+            popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
+            popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
+            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
             updatedAt: data.updatedAt || data.updated_at,
           };
           return NextResponse.json({ success: true, config }, { headers: CORS_HEADERS });
@@ -56,7 +59,12 @@ export async function POST(req: Request) {
       pinnedSlugs: Array.isArray(body.pinnedSlugs)
         ? body.pinnedSlugs.map((s: any) => String(s || '').trim()).filter(Boolean)
         : [],
-      badgeText: String(body.badgeText || 'TOP PICK').trim(),
+      badgeText: String(body.badgeText || 'VIRAL BUNDLE').trim(),
+      popupTitle: String(body.popupTitle || 'Viral Bundles').trim(),
+      popupSubtitle: String(
+        body.popupSubtitle || 'Handpicked viral reels packs curated to scale your reach 10x.'
+      ).trim(),
+      autoPopup: typeof body.autoPopup === 'boolean' ? body.autoPopup : true,
       updatedAt: new Date().toISOString(),
     };
 
