@@ -21,6 +21,24 @@ export async function GET() {
 
     if (db) {
       try {
+        const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
+        if (genSnap && genSnap.exists()) {
+          const gData = genSnap.data();
+          if (gData.homepage_pinned && typeof gData.homepage_pinned === 'object') {
+            const data = gData.homepage_pinned;
+            config = {
+              enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+              pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
+              badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
+              popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
+              popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
+              autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
+              updatedAt: data.updatedAt || data.updated_at,
+            };
+            return NextResponse.json({ success: true, config }, { headers: CORS_HEADERS });
+          }
+        }
+
         const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
         if (snap && snap.exists()) {
           const data = snap.data();
@@ -70,14 +88,15 @@ export async function POST(req: Request) {
 
     if (db) {
       try {
-        await setDoc(doc(db, 'store_settings', 'homepage_pinned'), config, { merge: true });
-
-        // Dual write to general settings document for cross-compatibility
+        // Write to general settings document (always authorized across all environments)
         await setDoc(
           doc(db, 'store_settings', 'general'),
-          { homepage_pinned: config, updatedAt: serverTimestamp() },
+          { homepage_pinned: config, updatedAt: serverTimestamp(), updated_at: new Date().toISOString() },
           { merge: true }
-        ).catch(() => null);
+        );
+
+        // Optional secondary write to dedicated document
+        setDoc(doc(db, 'store_settings', 'homepage_pinned'), config, { merge: true }).catch(() => null);
 
         // Add audit log
         await addDoc(collection(db, 'audit_logs'), {

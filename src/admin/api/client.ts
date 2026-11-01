@@ -3432,26 +3432,6 @@ class PortalApiClient {
     // 1. Direct Firestore read (primary source of truth in authenticated admin browser)
     if (db) {
       try {
-        const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
-        if (snap && snap.exists()) {
-          const data = snap.data();
-          const cfg: HomepagePinnedConfig = {
-            enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
-            pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
-            badgeText: data.badgeText || defaultVal.badgeText,
-            popupTitle: data.popupTitle || defaultVal.popupTitle,
-            popupSubtitle: data.popupSubtitle || defaultVal.popupSubtitle,
-            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
-            updatedAt: data.updatedAt || data.updated_at,
-          };
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(cfg));
-            } catch {}
-          }
-          return cfg;
-        }
-
         const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
         if (genSnap && genSnap.exists()) {
           const gData = genSnap.data();
@@ -3473,6 +3453,26 @@ class PortalApiClient {
             }
             return cfg;
           }
+        }
+
+        const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
+        if (snap && snap.exists()) {
+          const data = snap.data();
+          const cfg: HomepagePinnedConfig = {
+            enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+            pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
+            badgeText: data.badgeText || defaultVal.badgeText,
+            popupTitle: data.popupTitle || defaultVal.popupTitle,
+            popupSubtitle: data.popupSubtitle || defaultVal.popupSubtitle,
+            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
+            updatedAt: data.updatedAt || data.updated_at,
+          };
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(cfg));
+            } catch {}
+          }
+          return cfg;
         }
       } catch (err) {
         console.warn('Direct Firestore read error for homepage_pinned:', err);
@@ -3507,16 +3507,19 @@ class PortalApiClient {
       updatedAt: new Date().toISOString(),
     };
 
-    // 1. Direct Firestore write (guaranteed persistence in admin browser)
+    // 1. Direct Firestore write (guaranteed persistence in admin browser into store_settings/general)
     if (db) {
       try {
         const cleanPayload = sanitizePayload(merged);
-        await setDoc(doc(db, 'store_settings', 'homepage_pinned'), cleanPayload, { merge: true });
-        try {
-          await setDoc(doc(db, 'store_settings', 'general'), { homepage_pinned: cleanPayload }, { merge: true });
-        } catch {}
+        await setDoc(
+          doc(db, 'store_settings', 'general'),
+          { homepage_pinned: cleanPayload, updated_at: new Date().toISOString() },
+          { merge: true }
+        );
+        // Optional secondary standalone doc write
+        setDoc(doc(db, 'store_settings', 'homepage_pinned'), cleanPayload, { merge: true }).catch(() => null);
       } catch (err) {
-        console.error('Direct Firestore write error for homepage_pinned:', err);
+        console.error('Direct Firestore write error for homepage_pinned in general:', err);
       }
     }
 

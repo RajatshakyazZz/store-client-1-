@@ -11,21 +11,6 @@ export async function GET() {
 
     if (db) {
       try {
-        const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
-        if (snap && snap.exists()) {
-          const data = snap.data();
-          config = {
-            enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
-            pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
-            badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
-            popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
-            popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
-            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
-            updatedAt: data.updatedAt || data.updated_at,
-          };
-          return NextResponse.json({ success: true, config });
-        }
-
         const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
         if (genSnap && genSnap.exists()) {
           const gData = genSnap.data();
@@ -42,6 +27,21 @@ export async function GET() {
             };
             return NextResponse.json({ success: true, config });
           }
+        }
+
+        const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
+        if (snap && snap.exists()) {
+          const data = snap.data();
+          config = {
+            enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+            pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
+            badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
+            popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
+            popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
+            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
+            updatedAt: data.updatedAt || data.updated_at,
+          };
+          return NextResponse.json({ success: true, config });
         }
       } catch (err) {
         console.warn('Error reading homepage_pinned in storefront API:', err);

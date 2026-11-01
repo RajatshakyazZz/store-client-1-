@@ -594,7 +594,10 @@ export function getAllCatalogBundles(
   if (pinnedSlugs.length > 0) {
     const pinnedMap = new Map<string, number>();
     pinnedSlugs.forEach((slug, idx) => {
-      pinnedMap.set(slug.toLowerCase().trim(), idx);
+      const clean = slug.toLowerCase().trim();
+      pinnedMap.set(clean, idx);
+      pinnedMap.set(clean.replace(/^rb-/, ''), idx);
+      pinnedMap.set(`rb-${clean}`, idx);
     });
 
     const pinnedItems: BundleProduct[] = [];

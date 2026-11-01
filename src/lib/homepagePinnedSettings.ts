@@ -50,31 +50,9 @@ export async function fetchHomepagePinned(force = false): Promise<HomepagePinned
   const local = getHomepagePinnedSync();
 
   if (typeof window !== 'undefined') {
-    // 1. Direct client Firestore read
+    // 1. Direct client Firestore read from store_settings/general (cloud verified source)
     if (db) {
       try {
-        const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
-        if (snap && snap.exists()) {
-          const data = snap.data();
-          const loaded: HomepagePinnedConfig = {
-            enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
-            pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
-            badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
-            popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
-            popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
-            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
-            updatedAt: data.updatedAt || data.updated_at,
-          };
-          if (loaded.pinnedSlugs.length > 0 || !local.pinnedSlugs?.length) {
-            cachedPinned = loaded;
-            lastPinnedFetch = now;
-            try {
-              localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(loaded));
-            } catch {}
-            return loaded;
-          }
-        }
-
         const genSnap = await getDoc(doc(db, 'store_settings', 'general')).catch(() => null);
         if (genSnap && genSnap.exists()) {
           const gData = genSnap.data();
@@ -99,6 +77,29 @@ export async function fetchHomepagePinned(force = false): Promise<HomepagePinned
             }
           }
         }
+
+        // Secondary fallback to dedicated doc
+        const snap = await getDoc(doc(db, 'store_settings', 'homepage_pinned')).catch(() => null);
+        if (snap && snap.exists()) {
+          const data = snap.data();
+          const loaded: HomepagePinnedConfig = {
+            enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+            pinnedSlugs: Array.isArray(data.pinnedSlugs) ? data.pinnedSlugs : [],
+            badgeText: data.badgeText || DEFAULT_HOMEPAGE_PINNED.badgeText,
+            popupTitle: data.popupTitle || DEFAULT_HOMEPAGE_PINNED.popupTitle,
+            popupSubtitle: data.popupSubtitle || DEFAULT_HOMEPAGE_PINNED.popupSubtitle,
+            autoPopup: typeof data.autoPopup === 'boolean' ? data.autoPopup : true,
+            updatedAt: data.updatedAt || data.updated_at,
+          };
+          if (loaded.pinnedSlugs.length > 0 || !local.pinnedSlugs?.length) {
+            cachedPinned = loaded;
+            lastPinnedFetch = now;
+            try {
+              localStorage.setItem('vaultzet_homepage_pinned', JSON.stringify(loaded));
+            } catch {}
+            return loaded;
+          }
+        }
       } catch (err) {
         console.warn('Direct client firestore read error for homepage_pinned:', err);
       }
@@ -111,7 +112,6 @@ export async function fetchHomepagePinned(force = false): Promise<HomepagePinned
         const data = await res.json();
         if (data.success && data.config) {
           const incoming = data.config as HomepagePinnedConfig;
-          // Guard: Only replace local if incoming has pinned slugs or local had none
           if (incoming.pinnedSlugs?.length || !local.pinnedSlugs?.length) {
             cachedPinned = incoming;
             lastPinnedFetch = now;
@@ -141,11 +141,16 @@ export async function saveHomepagePinned(config: HomepagePinnedConfig): Promise<
       window.dispatchEvent(new CustomEvent('vaultzet:homepage_pinned_updated', { detail: config }));
     } catch {}
 
-    // 2. Direct Firestore write from client SDK
+    // 2. Direct Firestore write from client SDK (writing to general settings is permitted across all clients)
     if (db) {
       try {
-        await setDoc(doc(db, 'store_settings', 'homepage_pinned'), config, { merge: true });
-        await setDoc(doc(db, 'store_settings', 'general'), { homepage_pinned: config }, { merge: true });
+        await setDoc(doc(db, 'store_settings', 'general'), {
+          homepage_pinned: config,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+
+        // Optional secondary write to standalone doc if permitted
+        setDoc(doc(db, 'store_settings', 'homepage_pinned'), config, { merge: true }).catch(() => null);
       } catch (err) {
         console.warn('Direct firestore save error for homepage_pinned:', err);
       }
