@@ -120,38 +120,42 @@ export default function Hero() {
                 Download high-converting, professional reels bundles for Instagram, YouTube Shorts and Facebook. Pick your niche, preview sample videos, and get instant cloud access after purchase.
               </p>
 
-              {/* Action Buttons - Side by Side on Mobile & PC */}
-              <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-3 pt-0.5 sm:pt-1">
+              {/* Action Buttons - Side by Side on Mobile */}
+              <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-3.5 pt-0.5 sm:pt-1">
                 <Link
                   href="/shop"
                   prefetch={false}
-                  className="px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-[12px] sm:text-[14px] flex items-center justify-center gap-1.5 sm:gap-2 shadow-[0_10px_24px_rgba(245,158,11,0.32)] hover:scale-[1.02] active:scale-95 transition-all"
+                  className="px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-[12.5px] sm:text-[14px] flex items-center justify-center gap-1.5 sm:gap-2.5 shadow-[0_10px_24px_rgba(245,158,11,0.32)] hover:scale-[1.02] active:scale-95 transition-all"
                 >
                   <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-black/10 flex items-center justify-center text-[10px] sm:text-xs leading-none shrink-0 font-black">
                     👑
                   </span>
-                  <span className="truncate">Browse Bundles</span>
+                  <span>Browse Bundles</span>
                   <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 stroke-[2.5]" />
-                </Link>
-
-                <Link
-                  href="/my-order"
-                  prefetch={false}
-                  className="px-3 sm:px-5 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-slate-950 hover:bg-slate-900 text-amber-400 border border-amber-500/40 font-black text-[12px] sm:text-[14px] flex items-center justify-center gap-1.5 shadow-md hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  <FolderOpen className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="truncate">My Orders &amp; Drive</span>
                 </Link>
 
                 <a
                   href="#rbui-preview"
-                  className="col-span-2 sm:col-span-1 px-3 sm:px-5 py-2 sm:py-3.5 rounded-xl sm:rounded-2xl bg-white text-slate-900 border border-slate-300 hover:border-amber-400 font-extrabold text-[12px] sm:text-[14px] flex items-center justify-center gap-1.5 shadow-xs hover:shadow-md transition-all hover:bg-amber-50/50 active:scale-95"
+                  className="px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-white text-slate-900 border border-slate-300 hover:border-amber-400 font-extrabold text-[12.5px] sm:text-[14px] flex items-center justify-center gap-1.5 sm:gap-2.5 shadow-xs hover:shadow-md transition-all hover:bg-amber-50/50 active:scale-95"
                 >
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-950 flex items-center justify-center text-amber-400 shrink-0">
-                    <Play className="w-2 h-2 fill-amber-400 ml-0.5" />
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-950 flex items-center justify-center text-amber-400 shrink-0">
+                    <Play className="w-2 h-2 sm:w-2.5 sm:h-2.5 fill-amber-400 ml-0.5" />
                   </div>
-                  <span className="truncate">View Previews</span>
+                  <span>View Previews</span>
                 </a>
+              </div>
+
+              {/* Already Purchased / Instant Drive Access Quick Bar */}
+              <div className="pt-0.5 sm:pt-1">
+                <Link
+                  href="/my-order"
+                  prefetch={false}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-950 border border-amber-500/30 text-[11.5px] sm:text-[12.5px] font-extrabold transition-all group"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Already Purchased? Access Google Drive &amp; Orders</span>
+                  <ArrowRight className="w-3 h-3 text-amber-600 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
               </div>
 
               {/* 3 Glossy Stat Cards on Desktop */}
@@ -210,8 +214,8 @@ export default function Hero() {
                 }}
               />
 
-              {/* 3 Phone Cards Container - Tightly clustered and proportional on mobile */}
-              <div className="relative z-10 w-full max-w-[340px] sm:max-w-[380px] h-[235px] sm:h-[310px] lg:h-[340px] flex items-center justify-center">
+              {/* 3 Phone Cards Container - Tightly clustered and proportional on mobile & desktop */}
+              <div className="relative z-10 w-full max-w-[340px] sm:max-w-[380px] lg:max-w-[420px] h-[235px] sm:h-[310px] lg:h-[340px] flex items-center justify-center">
                 
                 {/* Left Card (-8deg tilt, tucked behind center card) */}
                 {leftCard && (
@@ -219,7 +223,7 @@ export default function Hero() {
                     href={`/product/${leftCard.slug}`}
                     prefetch={false}
                     key={`left-${leftCard.id}`}
-                    className="absolute z-10 w-[104px] sm:w-[142px] lg:w-[162px] aspect-[9/16] rounded-[16px] sm:rounded-[24px] overflow-hidden shadow-[0_12px_28px_rgba(30,15,70,0.2)] sm:shadow-[0_20px_45px_rgba(30,15,70,0.22)] border-[3.5px] sm:border-[5px] border-white transform -rotate-[8deg] -translate-x-[52px] sm:-translate-x-[72px] lg:-translate-x-[82px] translate-y-1 sm:translate-y-2 transition-all hover:scale-95 duration-500 block bg-slate-900 group"
+                    className="absolute z-10 w-[104px] sm:w-[138px] lg:w-[152px] aspect-[9/16] rounded-[16px] sm:rounded-[24px] overflow-hidden shadow-[0_12px_28px_rgba(30,15,70,0.2)] sm:shadow-[0_20px_45px_rgba(30,15,70,0.22)] border-[3.5px] sm:border-[5px] border-white transform -rotate-[8deg] -translate-x-[48px] sm:-translate-x-[66px] lg:-translate-x-[72px] translate-y-1 sm:translate-y-2 transition-all hover:scale-95 duration-500 block bg-slate-900 group"
                   >
                     <img
                       src={optimizeImageUrl(leftCard.thumbnail, 384, 75)}
@@ -253,7 +257,7 @@ export default function Hero() {
                     href={`/product/${rightCard.slug}`}
                     prefetch={false}
                     key={`right-${rightCard.id}`}
-                    className="absolute z-10 w-[104px] sm:w-[142px] lg:w-[162px] aspect-[9/16] rounded-[16px] sm:rounded-[24px] overflow-hidden shadow-[0_12px_28px_rgba(30,15,70,0.2)] sm:shadow-[0_20px_45px_rgba(30,15,70,0.22)] border-[3.5px] sm:border-[5px] border-white transform rotate-[8deg] translate-x-[52px] sm:translate-x-[72px] lg:translate-x-[82px] translate-y-1 sm:translate-y-2 transition-all hover:scale-95 duration-500 block bg-slate-900 group"
+                    className="absolute z-10 w-[104px] sm:w-[138px] lg:w-[152px] aspect-[9/16] rounded-[16px] sm:rounded-[24px] overflow-hidden shadow-[0_12px_28px_rgba(30,15,70,0.2)] sm:shadow-[0_20px_45px_rgba(30,15,70,0.22)] border-[3.5px] sm:border-[5px] border-white transform rotate-[8deg] translate-x-[48px] sm:translate-x-[66px] lg:translate-x-[72px] translate-y-1 sm:translate-y-2 transition-all hover:scale-95 duration-500 block bg-slate-900 group"
                   >
                     <img
                       src={optimizeImageUrl(rightCard.thumbnail, 384, 75)}
@@ -287,7 +291,7 @@ export default function Hero() {
                     href={`/product/${centerCard.slug}`}
                     prefetch={false}
                     key={`center-${centerCard.id}`}
-                    className="relative z-20 w-[126px] sm:w-[170px] lg:w-[195px] aspect-[9/16] rounded-[20px] sm:rounded-[26px] overflow-hidden shadow-[0_16px_36px_rgba(25,12,65,0.28)] sm:shadow-[0_26px_60px_rgba(25,12,65,0.34)] border-[4.5px] sm:border-[6px] border-amber-400 -translate-y-1 sm:-translate-y-2 transition-all hover:scale-[1.03] duration-500 block bg-slate-900 group"
+                    className="relative z-20 w-[126px] sm:w-[165px] lg:w-[185px] aspect-[9/16] rounded-[20px] sm:rounded-[26px] overflow-hidden shadow-[0_16px_36px_rgba(25,12,65,0.28)] sm:shadow-[0_26px_60px_rgba(25,12,65,0.34)] border-[4.5px] sm:border-[6px] border-amber-400 -translate-y-1 sm:-translate-y-2 transition-all hover:scale-[1.03] duration-500 block bg-slate-900 group"
                   >
                     <img
                       src={optimizeImageUrl(centerCard.thumbnail, 384, 75)}

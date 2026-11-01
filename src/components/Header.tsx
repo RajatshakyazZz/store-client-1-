@@ -156,11 +156,9 @@ export default function Header() {
     { name: 'Home', href: '/' },
     { name: 'Shop', href: '/shop' },
     { name: '🎁 Offer', href: '/claim-offer' },
-    { name: '🚀 Growth Proofs', href: '/proofs' },
     { name: 'Reels Feed', href: '/reels' },
     { name: 'Resell & Earn', href: '/earn' },
     { name: 'My Orders', href: '/my-order' },
-    { name: 'About Us', href: '/about-us' },
   ];
 
   // Hide header on full-screen reels page or reseller landing / checkout / success pages
@@ -174,7 +172,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-[0_2px_10px_rgba(20,10,50,0.02)]">
+    <header className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-[0_2px_10px_rgba(20,10,50,0.02)] max-w-full overflow-x-clip">
       {/* Top Promotional Coupon Header Bar ("OFF20" for 20% Off on all products) */}
       {isCouponBannerVisible && (
         <div className="relative bg-gradient-to-r from-[#210938] via-[#3b1261] to-[#1c0830] border-b border-white/10 text-white overflow-hidden">
@@ -264,7 +262,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-7">
+          <nav className="hidden lg:flex items-center gap-4 xl:gap-6">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -272,7 +270,7 @@ export default function Header() {
                   key={link.name}
                   href={link.href}
                   prefetch={false}
-                  className={`text-[15px] font-bold transition-all relative py-1 flex items-center gap-1.5 ${
+                  className={`text-[14px] xl:text-[15px] font-bold transition-all relative py-1 flex items-center gap-1.5 ${
                     isActive ? 'text-slate-900 font-extrabold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -405,18 +403,6 @@ export default function Header() {
               <Search className="w-4 h-4" />
             </button>
 
-            {/* Mobile My Orders Quick Access Button */}
-            <Link
-              href="/my-order"
-              prefetch={false}
-              className="sm:hidden px-2 h-9 rounded-xl bg-slate-900 text-amber-300 border border-amber-500/30 flex items-center gap-1 hover:bg-slate-800 transition-colors text-[11px] font-black relative shrink-0 shadow-xs"
-              aria-label="My Orders"
-              title="Access My Orders & Downloads"
-            >
-              <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span>Orders</span>
-            </Link>
-
             {/* Mobile Cart Button */}
             <Link
               href="/cart"
@@ -431,17 +417,6 @@ export default function Header() {
                   {cartCount}
                 </span>
               )}
-            </Link>
-
-            {/* Mobile Growth Proofs Pill Button */}
-            <Link
-              href="/proofs"
-              prefetch={false}
-              className="sm:hidden px-2 h-9 rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-800 border border-purple-200/80 flex items-center gap-1 hover:bg-purple-100 transition-colors text-xs font-bold shrink-0 shadow-2xs"
-              aria-label="Growth Proofs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
-              <span className="text-[11px] font-extrabold">Proofs</span>
             </Link>
 
             {/* Direct Growth Proofs Pill Button in Header Bar (Desktop & Tablet) */}

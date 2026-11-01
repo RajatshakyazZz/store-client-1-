@@ -68,9 +68,6 @@ export default function HomePage() {
       {/* Hero with Typewriter & 3D Cards */}
       <Hero />
 
-      {/* Instant My Orders & Downloads Quick Access Bar (Mobile & PC) */}
-      <MyOrdersQuickAccess />
-
       {/* Special Free Bundles Offer Banner */}
       <FreeBundleOfferBanner variant="home" />
 
@@ -93,6 +90,9 @@ export default function HomePage() {
       <div id="growth-proofs">
         <GrowthProofSection />
       </div>
+
+      {/* Instant My Orders & Downloads Quick Access Bar */}
+      <MyOrdersQuickAccess />
 
       {/* Creator Growth Analytics & Testimonials */}
       <CreatorProof />

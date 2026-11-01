@@ -65,7 +65,7 @@ export default function TrendingMarquee() {
 
           {/* Marquee Rail inside the Section Card */}
           <div className="relative w-full overflow-hidden marquee-mask">
-            <div className="flex gap-4 w-max animate-marquee hover:[animation-play-state:paused] py-2 will-change-transform">
+            <div className="flex gap-4 w-max animate-marquee hover:[animation-play-state:paused] active:[animation-play-state:paused] py-2 will-change-transform">
               {loopItems.map((bundle, index) => {
                 const origPrice = bundle.personalOriginalPrice || 499;
                 const currPrice = bundle.personalPrice || 99;

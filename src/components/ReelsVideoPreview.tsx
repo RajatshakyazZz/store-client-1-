@@ -29,8 +29,11 @@ export default function ReelsVideoPreview() {
         if (isMounted && data && data.length > 0) {
           setReels(data);
         }
-      });
+      }).catch(() => {});
     };
+
+    // Load immediately on mount as well as on first user gesture
+    loadLiveReels();
 
     const events = ['scroll', 'pointerdown', 'touchstart', 'keydown'] as const;
     const cleanup = () => {
@@ -178,6 +181,9 @@ export default function ReelsVideoPreview() {
                     <video
                       ref={(el) => {
                         videoRefs.current[item.id] = el;
+                        if (el) {
+                          el.play().catch(() => {});
+                        }
                       }}
                       src={item.videoUrl}
                       poster={optimizeImageUrl(reelPoster, 256, 75)}
@@ -185,6 +191,16 @@ export default function ReelsVideoPreview() {
                       loop
                       playsInline
                       muted={isMuted}
+                      preload="auto"
+                      onLoadedMetadata={(e) => {
+                        const target = e.currentTarget as HTMLVideoElement;
+                        target.muted = isMuted;
+                        target.play().catch(() => {});
+                      }}
+                      onError={() => {
+                        console.warn(`Video failed to play: ${item.videoUrl}`);
+                        setActiveVideoId(null);
+                      }}
                       onClick={() => handleTogglePlay(item.id)}
                       className="absolute inset-0 w-full h-full object-cover cursor-pointer"
                     />
