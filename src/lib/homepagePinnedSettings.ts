@@ -31,7 +31,13 @@ export function getHomepagePinnedSync(): HomepagePinnedConfig {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
-          const loaded: HomepagePinnedConfig = { ...DEFAULT_HOMEPAGE_PINNED, ...parsed };
+          const loaded: HomepagePinnedConfig = {
+            ...DEFAULT_HOMEPAGE_PINNED,
+            ...parsed,
+            pinnedSlugs: Array.isArray(parsed.pinnedSlugs)
+              ? parsed.pinnedSlugs.map((s: any) => String(s || '').trim()).filter(Boolean)
+              : [],
+          };
           cachedPinned = loaded;
           return loaded;
         }

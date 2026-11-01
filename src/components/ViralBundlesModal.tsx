@@ -33,19 +33,21 @@ export default function ViralBundlesModal() {
   const router = useRouter();
   const { addToCart, buyNow } = useCart();
 
+  const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [config, setConfig] = useState<HomepagePinnedConfig>(getHomepagePinnedSync());
-  const [allBundles, setAllBundles] = useState<BundleProduct[]>(() => {
-    const local = getLocalCustomProductsSync();
-    return getAllCatalogBundles(local, BUNDLE_PRODUCTS);
-  });
+  const [config, setConfig] = useState<HomepagePinnedConfig>(DEFAULT_HOMEPAGE_PINNED);
+  const [allBundles, setAllBundles] = useState<BundleProduct[]>(BUNDLE_PRODUCTS);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Sync pinned settings & custom products
+  // Sync pinned settings & custom products after mount to guarantee zero hydration mismatch
   useEffect(() => {
+    setIsMounted(true);
+    const initial = getHomepagePinnedSync();
+    if (initial) setConfig(initial);
+
     fetchHomepagePinned(true).then((cfg) => {
       if (cfg) setConfig(cfg);
-    });
+    }).catch(() => {});
 
     fetchCustomProducts().then((res) => {
       const all = getAllCatalogBundles(res, BUNDLE_PRODUCTS);
@@ -74,62 +76,69 @@ export default function ViralBundlesModal() {
 
   // Compute the list of pinned viral bundles in exact order (with prefix & case immunity)
   const pinnedBundles = useMemo(() => {
-    if (!config.enabled || !config.pinnedSlugs || config.pinnedSlugs.length === 0) {
+    try {
+      if (!isMounted || !config || !config.enabled || !Array.isArray(config.pinnedSlugs) || config.pinnedSlugs.length === 0) {
+        return [];
+      }
+
+      const map = new Map<string, BundleProduct>();
+      for (const b of (allBundles || [])) {
+        if (!b) continue;
+        if (b.slug) {
+          const s = String(b.slug).toLowerCase().trim();
+          map.set(s, b);
+          map.set(s.replace(/^rb-/, ''), b);
+          map.set(`rb-${s}`, b);
+        }
+        if (b.id) {
+          const id = String(b.id).toLowerCase().trim();
+          map.set(id, b);
+          map.set(id.replace(/^rb-/, ''), b);
+          map.set(`rb-${id}`, b);
+        }
+      }
+
+      return config.pinnedSlugs
+        .map((slug) => {
+          const clean = String(slug || '').toLowerCase().trim();
+          if (!clean) return null;
+          const found =
+            map.get(clean) ||
+            map.get(clean.replace(/^rb-/, '')) ||
+            map.get(`rb-${clean}`);
+
+          if (found) return found;
+
+          // Fallback bundle object so pinned items never disappear while custom products load
+          const fallbackTitle = clean
+            .replace(/^rb-/, '')
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+
+          return ({
+            id: clean,
+            slug: clean.replace(/^rb-/, ''),
+            title: fallbackTitle,
+            shortDescription: `${fallbackTitle} viral bundle with ready-to-post high converting reels.`,
+            category: 'AI Reels',
+            categorySlug: 'ai-reels',
+            reelCount: 1000,
+            personalPrice: 99,
+            personalOriginalPrice: 499,
+            resellerPrice: 199,
+            resellerOriginalPrice: 998,
+            thumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400',
+            galleryImages: [],
+            previewVideoUrl: '',
+            previewVideoUrls: [],
+          } as unknown) as BundleProduct;
+        })
+        .filter((b): b is BundleProduct => Boolean(b));
+    } catch (err) {
+      console.warn('Error computing pinned bundles:', err);
       return [];
     }
-
-    const map = new Map<string, BundleProduct>();
-    for (const b of allBundles) {
-      if (b.slug) {
-        const s = b.slug.toLowerCase().trim();
-        map.set(s, b);
-        map.set(s.replace(/^rb-/, ''), b);
-        map.set(`rb-${s}`, b);
-      }
-      if (b.id) {
-        const id = String(b.id).toLowerCase().trim();
-        map.set(id, b);
-        map.set(id.replace(/^rb-/, ''), b);
-        map.set(`rb-${id}`, b);
-      }
-    }
-
-    return config.pinnedSlugs
-      .map((slug) => {
-        const clean = slug.toLowerCase().trim();
-        const found =
-          map.get(clean) ||
-          map.get(clean.replace(/^rb-/, '')) ||
-          map.get(`rb-${clean}`);
-
-        if (found) return found;
-
-        // Fallback bundle object so pinned items never disappear while custom products load
-        const fallbackTitle = clean
-          .replace(/^rb-/, '')
-          .replace(/-/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase());
-
-        return ({
-          id: clean,
-          slug: clean.replace(/^rb-/, ''),
-          title: fallbackTitle,
-          shortDescription: `${fallbackTitle} viral bundle with ready-to-post high converting reels.`,
-          category: 'AI Reels',
-          categorySlug: 'ai-reels',
-          reelCount: 1000,
-          personalPrice: 99,
-          personalOriginalPrice: 499,
-          resellerPrice: 199,
-          resellerOriginalPrice: 998,
-          thumbnail: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400',
-          galleryImages: [],
-          previewVideoUrl: '',
-          previewVideoUrls: [],
-        } as unknown) as BundleProduct;
-      })
-      .filter((b): b is BundleProduct => Boolean(b));
-  }, [config.enabled, config.pinnedSlugs, allBundles]);
+  }, [isMounted, config, allBundles]);
 
   // Auto-open logic (balanced delay on visit)
   useEffect(() => {
@@ -178,8 +187,8 @@ export default function ViralBundlesModal() {
     };
   }, [isOpen]);
 
-  // If no pinned bundles configured, don't show anything
-  if (pinnedBundles.length === 0) {
+  // If not mounted on client or no pinned bundles configured, don't show anything (zero hydration mismatch)
+  if (!isMounted || pinnedBundles.length === 0) {
     return null;
   }
 

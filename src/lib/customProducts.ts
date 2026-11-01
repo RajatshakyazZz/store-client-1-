@@ -592,40 +592,50 @@ export function getAllCatalogBundles(
       : [];
 
   if (pinnedSlugs.length > 0) {
-    const pinnedMap = new Map<string, number>();
-    pinnedSlugs.forEach((slug, idx) => {
-      const clean = slug.toLowerCase().trim();
-      pinnedMap.set(clean, idx);
-      pinnedMap.set(clean.replace(/^rb-/, ''), idx);
-      pinnedMap.set(`rb-${clean}`, idx);
-    });
+    try {
+      const pinnedMap = new Map<string, number>();
+      pinnedSlugs.forEach((slug, idx) => {
+        const clean = String(slug || '').toLowerCase().trim();
+        if (clean) {
+          pinnedMap.set(clean, idx);
+          pinnedMap.set(clean.replace(/^rb-/, ''), idx);
+          pinnedMap.set(`rb-${clean}`, idx);
+        }
+      });
 
-    const pinnedItems: BundleProduct[] = [];
-    const nonPinnedItems: BundleProduct[] = [];
+      const pinnedItems: BundleProduct[] = [];
+      const nonPinnedItems: BundleProduct[] = [];
 
-    for (const item of rawBundles) {
-      const sKey = (item.slug || '').toLowerCase().trim();
-      const idKey = String(item.id || '').toLowerCase().trim();
-      if (pinnedMap.has(sKey) || pinnedMap.has(idKey)) {
-        pinnedItems.push({
-          ...item,
-          isHomepageTop: true,
-          homepageRank: (pinnedMap.get(sKey) ?? pinnedMap.get(idKey) ?? 0) + 1,
-        });
-      } else {
-        nonPinnedItems.push(item);
+      for (const item of rawBundles) {
+        if (!item) continue;
+        const sKey = String(item.slug || '').toLowerCase().trim();
+        const idKey = String(item.id || '').toLowerCase().trim();
+        if (pinnedMap.has(sKey) || pinnedMap.has(idKey)) {
+          pinnedItems.push({
+            ...item,
+            isHomepageTop: true,
+            homepageRank: (pinnedMap.get(sKey) ?? pinnedMap.get(idKey) ?? 0) + 1,
+          });
+        } else {
+          nonPinnedItems.push(item);
+        }
       }
+
+      pinnedItems.sort((a, b) => {
+        const aSlug = String(a?.slug || '').toLowerCase().trim();
+        const bSlug = String(b?.slug || '').toLowerCase().trim();
+        const aId = String(a?.id || '').toLowerCase().trim();
+        const bId = String(b?.id || '').toLowerCase().trim();
+        const rankA = pinnedMap.get(aSlug) ?? pinnedMap.get(aId) ?? 999;
+        const rankB = pinnedMap.get(bSlug) ?? pinnedMap.get(bId) ?? 999;
+        return rankA - rankB;
+      });
+
+      return [...pinnedItems, ...nonPinnedItems];
+    } catch (err) {
+      console.warn('Error applying homepage pinned sorting:', err);
+      return rawBundles;
     }
-
-    pinnedItems.sort((a, b) => {
-      const rankA =
-        pinnedMap.get(a.slug.toLowerCase()) ?? pinnedMap.get(String(a.id).toLowerCase()) ?? 999;
-      const rankB =
-        pinnedMap.get(b.slug.toLowerCase()) ?? pinnedMap.get(String(b.id).toLowerCase()) ?? 999;
-      return rankA - rankB;
-    });
-
-    return [...pinnedItems, ...nonPinnedItems];
   }
 
   return rawBundles;
