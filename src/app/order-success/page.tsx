@@ -32,6 +32,7 @@ import { useCart } from '@/context/CartContext';
 import { ALL_ACCESS_PLANS, BUNDLE_PRODUCTS } from '@/data/bundles';
 import { BundleProduct } from '@/types';
 import { track } from '@/lib/analytics';
+import { buildSupportWhatsAppUrl } from '@/lib/whatsappSupport';
 
 function resolveItemImage(item: any): string {
   if (item?.thumbnail && !item.thumbnail.includes('photo-1618005182384-a83a8bd57fbe')) {
@@ -307,9 +308,6 @@ function OrderSuccessContent() {
         (typeof it?.title === 'string' && it.title.toLowerCase().includes('all bundles'))
     );
 
-  const rawWa = (settings?.supportWhatsapp || '9142408286').replace(/[^0-9]/g, '');
-  const cleanWhatsappNumber = rawWa.length === 10 ? '91' + rawWa : rawWa;
-
   return (
     <div className="rbt-page py-6 sm:py-12 bg-gradient-to-b from-white via-[#faf9f6] to-[#f8fafc] min-h-screen text-[#17214a]">
       <div className="rbt-container max-w-[1180px] mx-auto px-4 sm:px-6 space-y-6 sm:space-y-8">
@@ -569,9 +567,9 @@ function OrderSuccessContent() {
                 Need any help with your download? Our support team is here to assist you.
               </p>
               <a
-                href={`https://wa.me/${cleanWhatsappNumber}?text=${encodeURIComponent(
+                href={buildSupportWhatsAppUrl(
                   `Hi ${settings.storeName || 'VaultWorld'}, I purchased order #${verifiedData?.orderNumber || orderId} and need assistance.`
-                )}`}
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-colors"
@@ -1329,7 +1327,9 @@ function OrderSuccessContent() {
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {/* 1. WhatsApp Support */}
               <a
-                href={`https://wa.me/${cleanWhatsappNumber}?text=Hi%20VaultWorld%20Support%2C%20I%20have%20an%20order%20query%20regarding%20Order%20${verifiedData?.orderNumber || orderId}`}
+                href={buildSupportWhatsAppUrl(
+                  `Hi VaultWorld Support, I have an order query regarding Order ${verifiedData?.orderNumber || orderId}`
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-2xl border border-emerald-200/80 bg-[#f5fff9] p-4 space-y-2 hover:shadow-md transition-shadow"
@@ -1476,20 +1476,6 @@ class OrderSuccessErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      let waPhone = '919142408286';
-      if (typeof window !== 'undefined') {
-        try {
-          const waCached = localStorage.getItem('rb_portal_settings_whatsapp');
-          if (waCached) {
-            const p = JSON.parse(waCached)?.phone_number;
-            if (p) {
-              const digits = String(p).replace(/\D/g, '');
-              waPhone = digits.length === 10 ? '91' + digits : digits;
-            }
-          }
-        } catch {}
-      }
-
       return (
         <div className="min-h-screen py-16 px-4 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 text-white flex items-center justify-center">
           <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl">
@@ -1520,7 +1506,9 @@ class OrderSuccessErrorBoundary extends React.Component<
               </a>
 
               <a
-                href={`https://wa.me/${waPhone}?text=${encodeURIComponent('Hi VaultWorld Support, I have completed my payment and need my download access.')}`}
+                href={buildSupportWhatsAppUrl(
+                  'Hi VaultWorld Support, I have completed my payment and need my download access.'
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full py-3.5 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"

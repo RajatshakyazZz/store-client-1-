@@ -6,6 +6,11 @@ import { X, Send, Sparkles, CheckCheck } from 'lucide-react';
 import { track } from '@/lib/analytics';
 import { useCart } from '@/context/CartContext';
 import { useStoreSettings } from '@/context/StoreSettingsContext';
+import {
+  HARDCODED_SUPPORT_WHATSAPP,
+  formatWhatsAppPhoneDigits,
+  buildSupportWhatsAppUrl,
+} from '@/lib/whatsappSupport';
 
 interface WhatsAppButtonProps {
   phoneNumber?: string;
@@ -60,15 +65,11 @@ export default function WhatsAppButton({
     return null;
   }
 
-  // Resolve dynamic phone number: prop > admin settings > fallback
-  const rawPhone = phoneNumber || settings?.supportWhatsapp || '9142408286';
-
-  let cleanPhone = rawPhone.replace(/[^0-9]/g, '');
-  if (cleanPhone.length === 10) {
-    cleanPhone = '91' + cleanPhone;
-  } else if (cleanPhone.length === 11 && cleanPhone.startsWith('0')) {
-    cleanPhone = '91' + cleanPhone.slice(1);
-  }
+  // Hardcode store support WhatsApp number (9142408286); reseller landing pages can override via phoneNumber prop
+  const cleanPhone =
+    isResellerPage && phoneNumber
+      ? formatWhatsAppPhoneDigits(phoneNumber)
+      : HARDCODED_SUPPORT_WHATSAPP;
 
   const effectiveStoreName = storeName || settings?.storeName || 'VaultWorld Store';
   const effectiveDefaultMessage = defaultMessage || settings?.whatsappDefaultMessage;
@@ -101,7 +102,7 @@ export default function WhatsAppButton({
         ? `Hi ${effectiveStoreName}, I have a question regarding "${productTitle}". Can you assist me?`
         : `Hi ${effectiveStoreName}, I am browsing your store and need quick assistance with viral reels bundles.`);
 
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(textToSend)}`;
+    return buildSupportWhatsAppUrl(textToSend, cleanPhone);
   };
 
   const handleOpenWhatsApp = (specificText?: string) => {

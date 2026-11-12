@@ -49,6 +49,7 @@ import { fetchCustomProductBySlug } from '@/lib/customProducts';
 import dynamic from 'next/dynamic';
 import FreeBundleOfferBanner from '@/components/FreeBundleOfferBanner';
 import { parseHostedVideoUrl } from '@/lib/videoUtils';
+import { buildSupportWhatsAppUrl } from '@/lib/whatsappSupport';
 
 const GrowthProofSection = dynamic(() => import('@/components/GrowthProofSection'), {
   ssr: false,
@@ -977,9 +978,9 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
           </div>
 
           <a
-            href={`https://wa.me/${((settings.supportWhatsapp || '7330482005').replace(/[^0-9]/g, '').length === 10 ? '91' + (settings.supportWhatsapp || '7330482005').replace(/[^0-9]/g, '') : (settings.supportWhatsapp || '7330482005').replace(/[^0-9]/g, ''))}?text=${encodeURIComponent(
-              `Hi ${settings.storeName || 'InstaReel'} Support! I have a question regarding: "${p.title}"`
-            )}`}
+            href={buildSupportWhatsAppUrl(
+              `Hi ${settings.storeName || 'VaultWorld Store'} Support! I have a question regarding: "${p.title}"`
+            )}
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5 active:scale-95 shrink-0"

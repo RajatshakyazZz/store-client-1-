@@ -27,6 +27,7 @@ import { BundleProduct } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { track } from '@/lib/analytics';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import { HARDCODED_SUPPORT_WHATSAPP } from '@/lib/whatsappSupport';
 
 interface ResellerLandingClientProps {
   listing: ResellerListing;
@@ -691,7 +692,7 @@ export default function ResellerLandingClient({
       {listing.whatsappButtonEnabled !== false && (
         <WhatsAppButton
           isResellerPage={true}
-          phoneNumber={listing.whatsappNumber || '919142408286'}
+          phoneNumber={listing.whatsappNumber || HARDCODED_SUPPORT_WHATSAPP}
           storeName={listing.resellerName ? `${listing.resellerName} • VaultWorld Partner` : 'VaultWorld Support'}
           productTitle={listing.customTitle}
           defaultMessage={`Hi! I am browsing "${listing.customTitle}" on VaultWorld. Can you please assist me?`}
