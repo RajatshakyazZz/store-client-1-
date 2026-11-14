@@ -12,6 +12,7 @@ import {
   Play,
   Flame,
   Trash2,
+  Calendar,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -29,6 +30,63 @@ import { Link } from 'react-router-dom';
 import { useBackendHealth } from '../context/BackendHealthContext';
 import { useToast } from '../context/ToastContext';
 
+function parseOrderDate(order: any): Date {
+  const raw =
+    order.paid_at ||
+    order.date_created ||
+    order.timestampIso ||
+    order.createdAt ||
+    order.created_at;
+  if (!raw) return new Date();
+  if (typeof raw.toDate === 'function') return raw.toDate();
+  if (raw instanceof Date) return raw;
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+function toIstDateKey(dateInput: Date | string | number): string {
+  try {
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(d.getTime())) return '';
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  } catch {
+    return '';
+  }
+}
+
+const ChartTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-slate-950 border border-slate-700/90 p-3.5 rounded-xl shadow-2xl space-y-1.5 text-xs min-w-[180px]">
+        <div className="text-slate-400 font-semibold text-[11px] border-b border-slate-800 pb-1">
+          {data.fullDate || data.date}
+        </div>
+        <div className="flex items-center justify-between gap-4 text-emerald-400 font-bold text-sm pt-0.5">
+          <span>Revenue:</span>
+          <span className="font-mono">{formatCurrency(data.revenue)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4 text-purple-300 font-medium text-[11px]">
+          <span>Orders:</span>
+          <span className="font-bold">{data.orders} {data.orders === 1 ? 'sale' : 'sales'}</span>
+        </div>
+        {data.orders > 0 && (
+          <div className="flex items-center justify-between gap-4 text-slate-400 text-[10px] pt-1 border-t border-slate-900">
+            <span>Avg AOV:</span>
+            <span className="font-mono">₹{data.aov}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const { success, error } = useToast();
@@ -45,21 +103,162 @@ export default function Dashboard() {
 
   const { status, errorMessage, openModal } = useBackendHealth();
 
+  const [timeframe, setTimeframe] = React.useState<'7d' | '14d' | '30d' | 'all'>('7d');
+
+  const now = React.useMemo(() => new Date(), []);
+  const todayKey = React.useMemo(() => toIstDateKey(now), [now]);
+  const yesterdayKey = React.useMemo(() => {
+    const yest = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    return toIstDateKey(yest);
+  }, [now]);
+
   // Compute live metrics strictly from COMPLETED (paid) orders so pending/abandoned checkouts are NEVER counted in revenue
   const paidOrders = React.useMemo(
     () => orders.filter((o: any) => o.status === 'completed'),
     [orders]
   );
-  const liveNetRevenue = paidOrders.reduce((sum: number, o: any) => sum + Number(o.total || 0), 0);
+
+  // 1. All-time / Lifetime Metrics
+  const liveTotalSales = React.useMemo(
+    () => paidOrders.reduce((sum: number, o: any) => sum + Number(o.total || 0), 0),
+    [paidOrders]
+  );
   const liveTotalOrders = paidOrders.length;
-  const liveActiveCustomers = new Set(
-    paidOrders.map((o: any) => o.customer?.email).filter(Boolean)
-  ).size;
-  const livePendingOrders = orders.filter(
-    (o: any) => o.status === 'pending' || o.status === 'processing' || o.status === 'failed'
-  ).length;
-  const liveAvgAov = liveTotalOrders > 0 ? Math.round(liveNetRevenue / liveTotalOrders) : 0;
-  const liveRevenueTrend = [{ date: 'Today', revenue: liveNetRevenue, orders: liveTotalOrders }];
+  const liveActiveCustomers = React.useMemo(
+    () => new Set(paidOrders.map((o: any) => o.customer?.email).filter(Boolean)).size,
+    [paidOrders]
+  );
+  const livePendingOrders = React.useMemo(
+    () => orders.filter((o: any) => o.status === 'pending' || o.status === 'processing' || o.status === 'failed').length,
+    [orders]
+  );
+  const liveAvgAov = liveTotalOrders > 0 ? Math.round(liveTotalSales / liveTotalOrders) : 0;
+
+  // 2. Today's and Yesterday's Metrics (Strict IST Date Matching)
+  const { todayRevenue, todayOrdersCount, yesterdayRevenue, yesterdayOrdersCount } = React.useMemo(() => {
+    let tRev = 0;
+    let tCount = 0;
+    let yRev = 0;
+    let yCount = 0;
+
+    paidOrders.forEach((o: any) => {
+      const orderDate = parseOrderDate(o);
+      const key = toIstDateKey(orderDate);
+      const amt = Number(o.total || 0);
+
+      if (key === todayKey) {
+        tRev += amt;
+        tCount += 1;
+      } else if (key === yesterdayKey) {
+        yRev += amt;
+        yCount += 1;
+      }
+    });
+
+    return {
+      todayRevenue: tRev,
+      todayOrdersCount: tCount,
+      yesterdayRevenue: yRev,
+      yesterdayOrdersCount: yCount,
+    };
+  }, [paidOrders, todayKey, yesterdayKey]);
+
+  const todayTrend = React.useMemo(() => {
+    if (yesterdayRevenue > 0) {
+      const diffPercent = Math.round(((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100);
+      return {
+        value: `${diffPercent >= 0 ? '+' : ''}${diffPercent}% vs yest`,
+        isPositive: diffPercent >= 0,
+      };
+    }
+    if (todayRevenue > 0 && yesterdayRevenue === 0) {
+      return {
+        value: 'New sales today',
+        isPositive: true,
+      };
+    }
+    return undefined;
+  }, [todayRevenue, yesterdayRevenue]);
+
+  // 3. Multi-day detailed revenue trend
+  const chartData = React.useMemo(() => {
+    const dateMap = new Map<string, { revenue: number; orders: number }>();
+    paidOrders.forEach((o: any) => {
+      const key = toIstDateKey(parseOrderDate(o));
+      if (!key) return;
+      const cur = dateMap.get(key) || { revenue: 0, orders: 0 };
+      cur.revenue += Number(o.total || 0);
+      cur.orders += 1;
+      dateMap.set(key, cur);
+    });
+
+    let daysCount = 7;
+    if (timeframe === '14d') daysCount = 14;
+    if (timeframe === '30d') daysCount = 30;
+
+    if (timeframe === 'all') {
+      if (paidOrders.length > 0) {
+        let earliest = now.getTime();
+        paidOrders.forEach((o: any) => {
+          const t = parseOrderDate(o).getTime();
+          if (t < earliest) earliest = t;
+        });
+        const diffDays = Math.ceil((now.getTime() - earliest) / (24 * 60 * 60 * 1000)) + 1;
+        daysCount = Math.max(7, Math.min(diffDays, 90));
+      } else {
+        daysCount = 7;
+      }
+    }
+
+    const points = [];
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const targetDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = toIstDateKey(targetDate);
+      const entry = dateMap.get(key) || { revenue: 0, orders: 0 };
+
+      let shortLabel = '';
+      if (key === todayKey) {
+        shortLabel = 'Today';
+      } else if (key === yesterdayKey) {
+        shortLabel = 'Yesterday';
+      } else {
+        shortLabel = new Intl.DateTimeFormat('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          month: 'short',
+          day: 'numeric',
+        }).format(targetDate);
+      }
+
+      const fullLabel = new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }).format(targetDate);
+
+      points.push({
+        dateKey: key,
+        date: shortLabel,
+        fullDate: fullLabel,
+        revenue: entry.revenue,
+        orders: entry.orders,
+        aov: entry.orders > 0 ? Math.round(entry.revenue / entry.orders) : 0,
+      });
+    }
+
+    return points;
+  }, [paidOrders, timeframe, now, todayKey, yesterdayKey]);
+
+  const periodRevenue = React.useMemo(
+    () => chartData.reduce((sum, p) => sum + p.revenue, 0),
+    [chartData]
+  );
+  const periodOrders = React.useMemo(
+    () => chartData.reduce((sum, p) => sum + p.orders, 0),
+    [chartData]
+  );
+  const periodAvgAov = periodOrders > 0 ? Math.round(periodRevenue / periodOrders) : 0;
 
   const liveTopBundles = React.useMemo(() => {
     const map = new Map<string, { id: string | number; name: string; sales_count: number; revenue: number }>();
@@ -179,7 +378,7 @@ export default function Dashboard() {
             Store Performance Overview
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 font-medium mt-0.5">
-            Real-time sales, fulfillment, and revenue metrics for vaultzet.shop
+            Real-time sales, fulfillment, and revenue metrics for VaultWorld Store
           </p>
         </div>
 
@@ -207,14 +406,29 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 4 KPI Cards (2-col on mobile so all 4 are visible at a glance, 4-col on desktop) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+      {/* 6 KPI Cards (2-col mobile, 3-col tablet, 6-col desktop) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <StatCard
-          title="Net Revenue Today"
-          value={formatCurrency(liveNetRevenue)}
-          subtitle="Real-time gross"
+          title="Total Sales"
+          value={formatCurrency(liveTotalSales)}
+          subtitle={`${liveTotalOrders} completed sales`}
           icon={IndianRupee}
           color="emerald"
+        />
+        <StatCard
+          title="Today's Sales"
+          value={formatCurrency(todayRevenue)}
+          subtitle={`${todayOrdersCount} completed today`}
+          icon={Flame}
+          trend={todayTrend}
+          color="purple"
+        />
+        <StatCard
+          title="Yesterday's Sales"
+          value={formatCurrency(yesterdayRevenue)}
+          subtitle={`${yesterdayOrdersCount} completed yesterday`}
+          icon={Calendar}
+          color="blue"
         />
         <StatCard
           title="Total Orders"
@@ -244,50 +458,77 @@ export default function Dashboard() {
         
         {/* Recharts Area Chart */}
         <div className="lg:col-span-8 p-4 sm:p-6 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-white">7-Day Revenue & Volume Curve</h3>
-              <p className="text-xs text-slate-400 font-medium">Daily completed transaction total in INR</p>
+              <h3 className="text-sm sm:text-base font-bold text-white">
+                {timeframe === 'all'
+                  ? 'All-Time Revenue & Volume Curve'
+                  : `${timeframe.replace('d', '')}-Day Revenue & Volume Curve`}
+              </h3>
+              <p className="text-xs text-slate-400 font-medium">
+                Daily completed transactions in INR • Period Sales: {formatCurrency(periodRevenue)} ({periodOrders} {periodOrders === 1 ? 'order' : 'orders'})
+              </p>
             </div>
-            <span className="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-              Avg AOV: ₹{liveAvgAov}
-            </span>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Timeframe selector pills */}
+              <div className="inline-flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-[11px] font-bold text-slate-400">
+                {(['7d', '14d', '30d', 'all'] as const).map((tf) => (
+                  <button
+                    key={tf}
+                    type="button"
+                    onClick={() => setTimeframe(tf)}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      timeframe === tf
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'hover:text-slate-200'
+                    }`}
+                  >
+                    {tf === 'all' ? 'All Time' : `${tf.replace('d', '')}D`}
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                Avg AOV: ₹{periodAvgAov || liveAvgAov}
+              </span>
+            </div>
           </div>
 
-          <div className="h-56 sm:h-72 w-full pt-2 sm:pt-4">
+          <div className="h-60 sm:h-72 w-full pt-2 sm:pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={liveRevenueTrend}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.45} />
                     <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  stroke="#64748b"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={{ stroke: '#334155' }}
+                />
                 <YAxis
                   stroke="#64748b"
                   fontSize={11}
                   tickLine={false}
-                  tickFormatter={(v) => `₹${v / 1000}k`}
+                  axisLine={{ stroke: '#334155' }}
+                  tickFormatter={(v) => (v >= 1000 ? `₹${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `₹${v}`)}
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderColor: '#334155',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    color: '#fff',
-                  }}
-                  formatter={(value: any) => [`₹${value}`, 'Revenue']}
-                />
+                <Tooltip content={<ChartTooltip />} />
                 <Area
                   type="monotone"
                   dataKey="revenue"
                   stroke="#8b5cf6"
-                  strokeWidth={3}
+                  strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#revenueGrad)"
+                  dot={{ r: 3, fill: '#8b5cf6', stroke: '#ffffff', strokeWidth: 1.5 }}
+                  activeDot={{ r: 6, fill: '#a855f7', stroke: '#ffffff', strokeWidth: 2 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -376,8 +617,8 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        <div className="overflow-x-auto -mx-1 px-1">
-          <table className="w-full text-left border-collapse text-xs min-w-[640px]">
+        <div className="overflow-x-auto admin-touch-scroll -mx-1 px-1">
+          <table className="w-full text-left border-collapse text-xs min-w-[560px]">
             <thead>
               <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px] font-black whitespace-nowrap">
                 <th className="py-2.5 px-3">Order</th>

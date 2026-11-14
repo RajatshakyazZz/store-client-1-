@@ -179,6 +179,60 @@ class PortalApiClient {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 4);
 
+    // Dynamic 7-Day Revenue Trend (IST)
+    const toIstDateKey = (dateInput: Date | string | number) => {
+      try {
+        const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+        if (isNaN(d.getTime())) return '';
+        return new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(d);
+      } catch {
+        return '';
+      }
+    };
+
+    const now = new Date();
+    const todayKey = toIstDateKey(now);
+    const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayKey = toIstDateKey(yesterdayDate);
+
+    const dateMap = new Map<string, { revenue: number; orders: number }>();
+    paidOrders.forEach((o) => {
+      const key = toIstDateKey(o.date_created);
+      if (key) {
+        const cur = dateMap.get(key) || { revenue: 0, orders: 0 };
+        cur.revenue += Number(o.total || 0);
+        cur.orders += 1;
+        dateMap.set(key, cur);
+      }
+    });
+
+    const revenueTrend = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = toIstDateKey(d);
+      const entry = dateMap.get(key) || { revenue: 0, orders: 0 };
+      let label = '';
+      if (key === todayKey) label = 'Today';
+      else if (key === yesterdayKey) label = 'Yesterday';
+      else {
+        label = new Intl.DateTimeFormat('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          month: 'short',
+          day: 'numeric',
+        }).format(d);
+      }
+      revenueTrend.push({
+        date: label,
+        revenue: entry.revenue,
+        orders: entry.orders,
+      });
+    }
+
     return {
       sales: totalSales,
       orders: paidOrders.length,
@@ -190,9 +244,7 @@ class PortalApiClient {
       average_order_value: paidOrders.length > 0 ? Math.round(totalSales / paidOrders.length) : 0,
       currency: 'INR',
       currency_symbol: '₹',
-      revenue_trend: [
-        { date: 'Today', revenue: totalSales, orders: paidOrders.length },
-      ],
+      revenue_trend: revenueTrend,
       top_selling_bundles: topSellingBundles,
       site_mode: 'LIVE',
       connector_status: {
@@ -973,7 +1025,16 @@ class PortalApiClient {
               })),
               payment_method: data.paymentMethod || 'UPI / Instant QR',
               transaction_id: data.transactionId || `UPI-${docId.slice(0, 8)}`,
-              date_created: data.timestampIso || new Date().toISOString(),
+              date_created:
+                data.paid_at ||
+                data.timestampIso ||
+                (data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null) ||
+                (data.created_at?.toDate ? data.created_at.toDate().toISOString() : null) ||
+                (typeof data.createdAt === 'string' && !isNaN(new Date(data.createdAt).getTime())
+                  ? new Date(data.createdAt).toISOString()
+                  : null) ||
+                data.date_created ||
+                new Date().toISOString(),
               google_drive_sent: rawStatus === 'completed',
             } as Order);
           }
